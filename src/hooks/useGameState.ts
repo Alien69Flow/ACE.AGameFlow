@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useTelegram } from './useTelegram';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 interface GameState {
   energy: number;
@@ -21,8 +22,27 @@ interface Mission {
   claimed: boolean;
 }
 
+// Helper function to call the Edge Function
+async function callGameApi(endpoint: string, initData: string, body?: object) {
+  const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api/${endpoint}`, {
+    method: body ? 'POST' : 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-telegram-init-data': initData,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    throw new Error(error.error || 'Request failed');
+  }
+  
+  return response.json();
+}
+
 export const useGameState = () => {
-  const { userId, username, isReady } = useTelegram();
+  const { initData, isReady } = useTelegram();
   const [gameState, setGameState] = useState<GameState>({
     energy: 0,
     stamina: 100,
@@ -34,70 +54,27 @@ export const useGameState = () => {
   const [isLoading, setIsLoading] = useState(true);
   const staminaIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize or fetch profile
+  // Initialize or fetch profile via Edge Function
   useEffect(() => {
-    if (!isReady || !userId) return;
+    if (!isReady || !initData) return;
 
     const initProfile = async () => {
       try {
-        // Try to fetch existing profile
-        let { data: profile, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('telegram_id', userId)
-          .maybeSingle();
-
-        if (!profile) {
-          // Create new profile
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert({
-              telegram_id: userId,
-              username: username,
-            })
-            .select()
-            .single();
-
-          if (createError) throw createError;
-          profile = newProfile;
-        }
-
-        // Calculate stamina regeneration
-        if (profile) {
-          const lastUpdate = new Date(profile.last_stamina_update);
-          const now = new Date();
-          const secondsElapsed = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
-          const staminaRegen = Math.floor(secondsElapsed / 60); // +1 per minute
-          const newStamina = Math.min(profile.stamina + staminaRegen, profile.max_stamina);
-
-          if (newStamina !== profile.stamina) {
-            await supabase
-              .from('profiles')
-              .update({ 
-                stamina: newStamina, 
-                last_stamina_update: now.toISOString() 
-              })
-              .eq('id', profile.id);
-            profile.stamina = newStamina;
-          }
-
+        const data = await callGameApi('init-profile', initData);
+        
+        if (data.profile) {
           setGameState({
-            energy: profile.energy,
-            stamina: profile.stamina,
-            maxStamina: profile.max_stamina,
-            tutorialCompleted: profile.tutorial_completed,
-            profileId: profile.id,
+            energy: data.profile.energy,
+            stamina: data.profile.stamina,
+            maxStamina: data.profile.max_stamina,
+            tutorialCompleted: data.profile.tutorial_completed,
+            profileId: data.profile.id,
           });
 
-          // Fetch completed missions
-          const { data: completedMissions } = await supabase
-            .from('missions_completed')
-            .select('*')
-            .eq('profile_id', profile.id);
-
-          if (completedMissions) {
+          // Map completed missions
+          if (data.missions) {
             setMissions(prev => prev.map(m => {
-              const completed = completedMissions.find(cm => cm.mission_id === m.id);
+              const completed = data.missions.find((cm: { mission_id: string }) => cm.mission_id === m.id);
               if (completed) {
                 return {
                   ...m,
@@ -111,31 +88,31 @@ export const useGameState = () => {
           }
         }
       } catch (error) {
-        console.error('Error initializing profile:', error);
+        console.error('Failed to load profile');
       } finally {
         setIsLoading(false);
       }
     };
 
     initProfile();
-  }, [isReady, userId, username]);
+  }, [isReady, initData]);
 
-  // Stamina regeneration timer
+  // Stamina regeneration timer (sync with server periodically)
   useEffect(() => {
-    if (!gameState.profileId) return;
+    if (!gameState.profileId || !initData) return;
 
     staminaIntervalRef.current = setInterval(async () => {
       if (gameState.stamina < gameState.maxStamina) {
-        const newStamina = gameState.stamina + 1;
-        setGameState(prev => ({ ...prev, stamina: newStamina }));
-        
-        await supabase
-          .from('profiles')
-          .update({ 
-            stamina: newStamina, 
-            last_stamina_update: new Date().toISOString() 
-          })
-          .eq('id', gameState.profileId);
+        try {
+          const data = await callGameApi('sync-stamina', initData);
+          setGameState(prev => ({ 
+            ...prev, 
+            stamina: data.stamina,
+            maxStamina: data.maxStamina 
+          }));
+        } catch {
+          // Silent fail for sync
+        }
       }
     }, 60000); // Every 60 seconds
 
@@ -144,94 +121,96 @@ export const useGameState = () => {
         clearInterval(staminaIntervalRef.current);
       }
     };
-  }, [gameState.profileId, gameState.stamina, gameState.maxStamina]);
+  }, [gameState.profileId, gameState.stamina, gameState.maxStamina, initData]);
 
   const tapToroid = useCallback(async () => {
-    if (gameState.stamina <= 0 || !gameState.profileId) return false;
+    if (gameState.stamina <= 0 || !gameState.profileId || !initData) return false;
 
-    const newEnergy = gameState.energy + 1;
-    const newStamina = gameState.stamina - 1;
-
+    // Optimistic update
     setGameState(prev => ({
       ...prev,
-      energy: newEnergy,
-      stamina: newStamina,
+      energy: prev.energy + 1,
+      stamina: prev.stamina - 1,
     }));
 
-    await supabase
-      .from('profiles')
-      .update({ 
-        energy: newEnergy, 
-        stamina: newStamina,
-        last_stamina_update: new Date().toISOString(),
-      })
-      .eq('id', gameState.profileId);
-
-    return true;
-  }, [gameState.stamina, gameState.energy, gameState.profileId]);
+    try {
+      const data = await callGameApi('tap', initData);
+      
+      if (!data.success) {
+        // Revert on failure
+        setGameState(prev => ({
+          ...prev,
+          energy: prev.energy - 1,
+          stamina: prev.stamina + 1,
+        }));
+        return false;
+      }
+      
+      // Sync with server values
+      setGameState(prev => ({
+        ...prev,
+        energy: data.energy,
+        stamina: data.stamina,
+      }));
+      
+      return true;
+    } catch {
+      // Revert on error
+      setGameState(prev => ({
+        ...prev,
+        energy: prev.energy - 1,
+        stamina: prev.stamina + 1,
+      }));
+      return false;
+    }
+  }, [gameState.stamina, gameState.profileId, initData]);
 
   const startMission = useCallback(async (missionId: string) => {
-    if (!gameState.profileId) return;
+    if (!gameState.profileId || !initData) return;
 
-    const now = new Date();
-    
-    await supabase
-      .from('missions_completed')
-      .upsert({
-        profile_id: gameState.profileId,
-        mission_id: missionId,
-        started_at: now.toISOString(),
-      });
-
-    setMissions(prev => prev.map(m => 
-      m.id === missionId ? { ...m, startedAt: now } : m
-    ));
-  }, [gameState.profileId]);
+    try {
+      const data = await callGameApi('start-mission', initData, { missionId });
+      
+      setMissions(prev => prev.map(m => 
+        m.id === missionId ? { ...m, startedAt: new Date(data.startedAt) } : m
+      ));
+    } catch (error) {
+      console.error('Failed to start mission');
+    }
+  }, [gameState.profileId, initData]);
 
   const claimMission = useCallback(async (missionId: string, reward: number) => {
-    if (!gameState.profileId) return false;
+    if (!gameState.profileId || !initData) return false;
 
     const mission = missions.find(m => m.id === missionId);
     if (!mission?.startedAt || mission.claimed) return false;
 
-    const elapsedSeconds = (Date.now() - mission.startedAt.getTime()) / 1000;
-    if (elapsedSeconds < 33) return false;
-
-    const newEnergy = gameState.energy + reward;
-    const now = new Date();
-
-    await supabase
-      .from('missions_completed')
-      .update({
-        completed_at: now.toISOString(),
-        claimed: true,
-      })
-      .eq('profile_id', gameState.profileId)
-      .eq('mission_id', missionId);
-
-    await supabase
-      .from('profiles')
-      .update({ energy: newEnergy })
-      .eq('id', gameState.profileId);
-
-    setGameState(prev => ({ ...prev, energy: newEnergy }));
-    setMissions(prev => prev.map(m => 
-      m.id === missionId ? { ...m, completedAt: now, claimed: true } : m
-    ));
-
-    return true;
-  }, [gameState.profileId, gameState.energy, missions]);
+    try {
+      const data = await callGameApi('claim-mission', initData, { missionId, reward });
+      
+      if (data.success) {
+        setGameState(prev => ({ ...prev, energy: data.energy }));
+        setMissions(prev => prev.map(m => 
+          m.id === missionId ? { ...m, completedAt: new Date(), claimed: true } : m
+        ));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, [gameState.profileId, missions, initData]);
 
   const completeTutorial = useCallback(async () => {
-    if (!gameState.profileId) return;
+    if (!gameState.profileId || !initData) return;
 
-    await supabase
-      .from('profiles')
-      .update({ tutorial_completed: true })
-      .eq('id', gameState.profileId);
-
-    setGameState(prev => ({ ...prev, tutorialCompleted: true }));
-  }, [gameState.profileId]);
+    try {
+      await callGameApi('complete-tutorial', initData);
+      setGameState(prev => ({ ...prev, tutorialCompleted: true }));
+    } catch {
+      // Silent fail
+    }
+  }, [gameState.profileId, initData]);
 
   return {
     gameState,
