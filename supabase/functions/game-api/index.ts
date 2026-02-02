@@ -66,7 +66,7 @@ async function validateTelegramInitData(initData: string, botToken: string): Pro
     const user = JSON.parse(userStr);
     return { valid: true, user };
   } catch (error) {
-    console.error('Telegram validation error:', error);
+    console.error('Telegram validation failed');
     return { valid: false };
   }
 }
@@ -92,16 +92,10 @@ Deno.serve(async (req) => {
     // Get and validate Telegram init data
     const initData = req.headers.get('x-telegram-init-data');
     
-    // Allow dev mode for testing (only in development)
-    const isDev = initData === 'dev_mode';
     let telegramUserId: string;
     let telegramUsername: string | null = null;
     
-    if (isDev) {
-      // Development mode - use fixed test user
-      telegramUserId = 'dev_user_123';
-      telegramUsername = 'AlienDev';
-    } else if (initData) {
+    if (initData) {
       const validation = await validateTelegramInitData(initData, botToken);
       if (!validation.valid || !validation.user) {
         return new Response(
@@ -199,11 +193,11 @@ Deno.serve(async (req) => {
           );
         }
         
-        // Atomic update
+        // Atomic update with optimistic locking
         const newEnergy = profile.energy + 1;
         const newStamina = profile.stamina - 1;
         
-        const { error: updateError } = await supabase
+        const { data: updatedProfile, error: updateError } = await supabase
           .from('profiles')
           .update({ 
             energy: newEnergy, 
@@ -211,17 +205,35 @@ Deno.serve(async (req) => {
             last_stamina_update: new Date().toISOString() 
           })
           .eq('id', profile.id)
-          .eq('stamina', profile.stamina); // Optimistic lock
+          .eq('stamina', profile.stamina) // Optimistic lock
+          .select('energy, stamina');
         
-        if (updateError) {
+        // Check for race condition (0 rows updated means concurrent update)
+        if (updateError || !updatedProfile || updatedProfile.length === 0) {
+          // Re-read actual state to return correct values
+          const { data: currentProfile } = await supabase
+            .from('profiles')
+            .select('energy, stamina')
+            .eq('id', profile.id)
+            .single();
+          
           return new Response(
-            JSON.stringify({ success: false, error: 'Update failed' }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ 
+              success: false, 
+              error: 'Concurrent update detected',
+              energy: currentProfile?.energy ?? profile.energy,
+              stamina: currentProfile?.stamina ?? profile.stamina
+            }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
         
         return new Response(
-          JSON.stringify({ success: true, energy: newEnergy, stamina: newStamina }),
+          JSON.stringify({ 
+            success: true, 
+            energy: updatedProfile[0].energy, 
+            stamina: updatedProfile[0].stamina 
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -408,7 +420,8 @@ Deno.serve(async (req) => {
         );
     }
   } catch (error) {
-    console.error('Game API error:', error);
+    // Log only error type to avoid exposing internal details
+    console.error('Game API error:', error instanceof Error ? error.name : 'Unknown');
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
