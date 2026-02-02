@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 
 export const useTelegram = () => {
   const [isReady, setIsReady] = useState(false);
+  const [initData, setInitData] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
 
@@ -12,6 +13,9 @@ export const useTelegram = () => {
       tg.ready();
       tg.expand();
       
+      // Store the full initData for server-side validation
+      setInitData(tg.initData);
+      
       const user = tg.initDataUnsafe?.user;
       if (user) {
         setUserId(user.id.toString());
@@ -19,7 +23,8 @@ export const useTelegram = () => {
       }
       setIsReady(true);
     } else {
-      // Development mode - simulate Telegram user
+      // Development mode - use dev marker for Edge Function
+      setInitData('dev_mode');
       setUserId('dev_user_123');
       setUsername('AlienDev');
       setIsReady(true);
@@ -44,6 +49,7 @@ export const useTelegram = () => {
 
   return {
     isReady,
+    initData,
     userId,
     username,
     hapticFeedback,
