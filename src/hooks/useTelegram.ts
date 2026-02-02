@@ -23,11 +23,12 @@ export const useTelegram = () => {
       }
       setIsReady(true);
     } else {
-      // Development mode - use dev marker for Edge Function
-      setInitData('dev_mode');
-      setUserId('dev_user_123');
-      setUsername('AlienDev');
-      setIsReady(true);
+      // Not in Telegram WebApp - app won't function without Telegram
+      console.warn('This app requires Telegram WebApp to function');
+      setInitData(null);
+      setUserId(null);
+      setUsername(null);
+      setIsReady(false);
     }
   }, []);
 
