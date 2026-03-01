@@ -9,6 +9,7 @@ import { Tutorial } from '@/components/game/Tutorial';
 import { PlanetScreen } from '@/screens/PlanetScreen';
 import { MineScreen } from '@/screens/MineScreen';
 import { NetworkScreen } from '@/screens/NetworkScreen';
+import { TonConnectButton } from '@tonconnect/ui-react'; 
 
 type Screen = 'planet' | 'mine' | 'network';
 
