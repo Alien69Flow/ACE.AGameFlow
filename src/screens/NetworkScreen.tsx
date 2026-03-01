@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import { Wallet } from 'lucide-react';
 import { MissionCard } from '@/components/game/MissionCard';
 import { EcosystemLink } from '@/components/game/EcosystemLink';
+import { TonConnectButton } from '@tonconnect/ui-react';
 
 interface Mission {
   id: string;
