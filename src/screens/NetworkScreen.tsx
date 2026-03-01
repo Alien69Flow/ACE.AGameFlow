@@ -1,5 +1,4 @@
 import { motion } from 'framer-motion';
-import { Wallet } from 'lucide-react';
 import { MissionCard } from '@/components/game/MissionCard';
 import { EcosystemLink } from '@/components/game/EcosystemLink';
 import { TonConnectButton } from '@tonconnect/ui-react';
@@ -53,19 +52,10 @@ export const NetworkScreen = ({
       className="flex-1 overflow-y-auto pb-24 pt-20"
     >
       <div className="px-4 space-y-6">
-        {/* TON Wallet Button */}
-        <motion.button
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="w-full py-4 px-6 bg-gradient-to-r from-[#0098EA] to-[#00B4D8] rounded-xl
-                    flex items-center justify-center gap-3 font-display font-bold text-white
-                    hover:opacity-90 transition-opacity"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          <Wallet className="w-5 h-5" />
-          Conectar Wallet TON
-        </motion.button>
+        {/* BOTÓN REAL DE TON CONNECT */}
+        <div className="flex justify-center w-full py-4">
+          <TonConnectButton />
+        </div>
 
         {/* Missions Section */}
         <section>
