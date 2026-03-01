@@ -49,7 +49,7 @@ export const NetworkScreen = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="flex-1 overflow-y-auto pb-24 pt-20"
+      className="flex-1 overflow-y-auto h-[calc(100vh-100px)] w-full pb-32"
     >
       <div className="px-4 space-y-6">
         {/* BOTÓN REAL DE TON CONNECT */}
