@@ -22,7 +22,6 @@ interface Mission {
   claimed: boolean;
 }
 
-// Helper function to call the Edge Function
 async function callGameApi(endpoint: string, initData: string, body?: object) {
   const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api/${endpoint}`, {
     method: body ? 'POST' : 'GET',
@@ -52,9 +51,12 @@ export const useGameState = () => {
   });
   const [missions, setMissions] = useState<Mission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // REFS DE CONTROL TÉCNICO
   const staminaIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isMiningRef = useRef(false); // BLOQUEO TESLA: Evita colisión de datos Cliente-Servidor
 
-  // Initialize or fetch profile via Edge Function
+  // Inicialización del Perfil
   useEffect(() => {
     if (!isReady || !initData) return;
 
@@ -71,7 +73,6 @@ export const useGameState = () => {
             profileId: data.profile.id,
           });
 
-          // Map completed missions
           if (data.missions) {
             setMissions(prev => prev.map(m => {
               const completed = data.missions.find((cm: { mission_id: string }) => cm.mission_id === m.id);
@@ -88,7 +89,7 @@ export const useGameState = () => {
           }
         }
       } catch (error) {
-        console.error('Failed to load profile');
+        console.error('Error Crítico: Fallo en carga de perfil Neutrino');
       } finally {
         setIsLoading(false);
       }
@@ -97,12 +98,13 @@ export const useGameState = () => {
     initProfile();
   }, [isReady, initData]);
 
-  // Stamina regeneration timer (sync with server periodically)
+  // Sincronización de Stamina (Regeneración Pasiva)
   useEffect(() => {
     if (!gameState.profileId || !initData) return;
 
     staminaIntervalRef.current = setInterval(async () => {
-      if (gameState.stamina < gameState.maxStamina) {
+      // Solo sincronizar si el núcleo no está en proceso de minado activo
+      if (gameState.stamina < gameState.maxStamina && !isMiningRef.current) {
         try {
           const data = await callGameApi('sync-stamina', initData);
           setGameState(prev => ({ 
@@ -111,22 +113,24 @@ export const useGameState = () => {
             maxStamina: data.maxStamina 
           }));
         } catch {
-          // Silent fail for sync
+          // Fallo silencioso: Reintento en el siguiente ciclo gravitatorio
         }
       }
-    }, 60000); // Every 60 seconds
+    }, 60000);
 
     return () => {
-      if (staminaIntervalRef.current) {
-        clearInterval(staminaIntervalRef.current);
-      }
+      if (staminaIntervalRef.current) clearInterval(staminaIntervalRef.current);
     };
   }, [gameState.profileId, gameState.stamina, gameState.maxStamina, initData]);
 
+  // MECÁNICA DE MINADO (Torque Gravitatorio)
   const tapToroid = useCallback(async () => {
-    if (gameState.stamina <= 0 || !gameState.profileId || !initData) return false;
+    if (gameState.stamina <= 0 || !gameState.profileId || !initData || isMiningRef.current) return false;
 
-    // Optimistic update
+    // Activamos bloqueo para evitar que el Sync del servidor pise el estado local
+    isMiningRef.current = true;
+
+    // Update Optimista (Latencia Cero para el usuario)
     setGameState(prev => ({
       ...prev,
       energy: prev.energy + 1,
@@ -137,7 +141,7 @@ export const useGameState = () => {
       const data = await callGameApi('tap', initData);
       
       if (!data.success) {
-        // Revert on failure
+        // Reversión por inconsistencia cuántica
         setGameState(prev => ({
           ...prev,
           energy: prev.energy - 1,
@@ -146,7 +150,7 @@ export const useGameState = () => {
         return false;
       }
       
-      // Sync with server values
+      // Sincronización final tras el Tap
       setGameState(prev => ({
         ...prev,
         energy: data.energy,
@@ -155,39 +159,38 @@ export const useGameState = () => {
       
       return true;
     } catch {
-      // Revert on error
+      // Reversión por error de red
       setGameState(prev => ({
         ...prev,
         energy: prev.energy - 1,
         stamina: prev.stamina + 1,
       }));
       return false;
+    } finally {
+      // Liberamos el bloqueo para permitir regeneración pasiva
+      isMiningRef.current = false;
     }
   }, [gameState.stamina, gameState.profileId, initData]);
 
   const startMission = useCallback(async (missionId: string) => {
     if (!gameState.profileId || !initData) return;
-
     try {
       const data = await callGameApi('start-mission', initData, { missionId });
-      
       setMissions(prev => prev.map(m => 
         m.id === missionId ? { ...m, startedAt: new Date(data.startedAt) } : m
       ));
     } catch (error) {
-      console.error('Failed to start mission');
+      console.error('Misión fallida');
     }
   }, [gameState.profileId, initData]);
 
   const claimMission = useCallback(async (missionId: string, reward: number) => {
     if (!gameState.profileId || !initData) return false;
-
     const mission = missions.find(m => m.id === missionId);
     if (!mission?.startedAt || mission.claimed) return false;
 
     try {
       const data = await callGameApi('claim-mission', initData, { missionId, reward });
-      
       if (data.success) {
         setGameState(prev => ({ ...prev, energy: data.energy }));
         setMissions(prev => prev.map(m => 
@@ -203,13 +206,10 @@ export const useGameState = () => {
 
   const completeTutorial = useCallback(async () => {
     if (!gameState.profileId || !initData) return;
-
     try {
       await callGameApi('complete-tutorial', initData);
       setGameState(prev => ({ ...prev, tutorialCompleted: true }));
-    } catch {
-      // Silent fail
-    }
+    } catch { /* Silent fail */ }
   }, [gameState.profileId, initData]);
 
   return {
