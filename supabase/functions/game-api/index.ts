@@ -6,11 +6,14 @@ const corsHeaders = {
 };
 
 // Validate Telegram WebApp initData
-async function validateTelegramInitData(initData: string, botToken: string): Promise<{ valid: boolean; user?: { id: number; username?: string; first_name?: string } }> {
+async function validateTelegramInitData(initData: string, botToken: string): Promise<{ valid: boolean; user?: { id: number; username?: string; first_name?: string }; startParam?: string }> {
   try {
     const params = new URLSearchParams(initData);
     const hash = params.get('hash');
     if (!hash) return { valid: false };
+    
+    // Extract start_param before deleting hash
+    const startParam = params.get('start_param') || undefined;
     
     params.delete('hash');
     
@@ -60,7 +63,7 @@ async function validateTelegramInitData(initData: string, botToken: string): Pro
     if (!userStr) return { valid: false };
     
     const user = JSON.parse(userStr);
-    return { valid: true, user };
+    return { valid: true, user, startParam };
   } catch (error) {
     console.error('Telegram validation failed');
     return { valid: false };
