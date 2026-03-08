@@ -226,6 +226,7 @@ export const NetworkScreen = ({
         <div className="flex gap-1.5">
           {[
             { id: 'social' as const, label: 'MISIONES' },
+            { id: 'friends' as const, label: 'AMIGOS', onClick: onFetchFriends },
             { id: 'leaderboard' as const, label: 'RANKING', onClick: onFetchLeaderboard },
             { id: 'clans' as const, label: 'CLANES', onClick: onFetchClanLeaderboard },
           ].map(tab => (
