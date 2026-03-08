@@ -1,4 +1,9 @@
 import { motion } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import {
+  Send, Globe, MessageCircle, Rocket, BookOpen, FileText,
+  Instagram, Facebook, Linkedin, Music, AtSign, Github, MessageSquare
+} from 'lucide-react';
 
 const RINGS = [
   { size: 640, opacity: 0.06, delay: 0 },
@@ -24,28 +29,55 @@ const STATS = [
   { label: 'TON', sub: 'BLOCKCHAIN' },
 ];
 
-const PRIMARY_SOCIALS = [
-  { label: 'TELEGRAM', href: 'https://t.me/AlienFlow', icon: '⬡' },
-  { label: 'X', href: 'https://x.com/alien69flow', icon: '✧' },
-  { label: 'WEBSITE', href: 'https://alienflow.space', icon: '◈' },
-  { label: 'DISCORD', href: '#', icon: '⬢', soon: true },
+// Alphabetically sorted official channels with Lucide icons
+const SOCIAL_LINKS = [
+  { name: 'Discord', icon: MessageCircle, url: '#', soon: true },
+  { name: 'DoraHacks', icon: Rocket, url: 'https://dorahacks.io/org/alien69flow' },
+  { name: 'Facebook', icon: Facebook, url: 'https://facebook.com/Alien69Flow' },
+  { name: 'Farcaster', icon: AtSign, url: 'https://warpcast.com/alien69flow' },
+  { name: 'GitHub', icon: Github, url: 'https://github.com/Alien69Flow' },
+  { name: 'GitBook', icon: BookOpen, url: '#', soon: true },
+  { name: 'HackMD', icon: FileText, url: 'https://hackmd.io/@Alien69Flow' },
+  { name: 'Instagram', icon: Instagram, url: 'https://instagram.com/alien69flow' },
+  { name: 'LinkedIn', icon: Linkedin, url: 'https://linkedin.com/company/alienflow' },
+  { name: 'Reddit', icon: MessageSquare, url: 'https://reddit.com/u/Alien69Flow' },
+  { name: 'Telegram', icon: Send, url: 'https://t.me/AlienFlow' },
+  { name: 'Threads', icon: AtSign, url: 'https://threads.net/@alien69flow' },
+  { name: 'TikTok', icon: Music, url: '#', soon: true },
+  { name: 'Website', icon: Globe, url: 'https://alienflow.space' },
+  { name: 'X', icon: () => <span className="font-bold text-xs">𝕏</span>, url: 'https://x.com/alien69flow' },
 ];
 
-const SECONDARY_SOCIALS = [
-  { label: 'IG', href: 'https://instagram.com/alien69flow' },
-  { label: 'FB', href: 'https://facebook.com/Alien69Flow' },
-  { label: 'REDDIT', href: 'https://reddit.com/u/Alien69Flow' },
-  { label: 'GITHUB', href: 'https://github.com/Alien69Flow' },
-  { label: 'LINKEDIN', href: 'https://linkedin.com/company/alienflow' },
-  { label: 'TIKTOK', href: 'https://tiktok.com/@alien69flow' },
-  { label: 'THREADS', href: 'https://threads.net/@alien69flow' },
-  { label: 'FARCASTER', href: 'https://warpcast.com/alien69flow' },
-  { label: 'DORA', href: 'https://dorahacks.io/org/alien69flow' },
-  { label: 'GITBOOK', href: '#', soon: true },
-  { label: 'HACKMD', href: 'https://hackmd.io/@Alien69Flow' },
-];
+const SUBTITLE_TEXT = 'ZERO-POINT ENERGY MINING · NEUTRINO PROTOCOL';
 
 export const LandingScreen = () => {
+  const [typedText, setTypedText] = useState('');
+  const [showCursor, setShowCursor] = useState(true);
+
+  // Typing effect for subtitle
+  useEffect(() => {
+    const startDelay = 1200; // Start after logo/title animation
+    const typingSpeed = 40;
+
+    const startTyping = setTimeout(() => {
+      let currentIndex = 0;
+      const typeInterval = setInterval(() => {
+        if (currentIndex <= SUBTITLE_TEXT.length) {
+          setTypedText(SUBTITLE_TEXT.slice(0, currentIndex));
+          currentIndex++;
+        } else {
+          clearInterval(typeInterval);
+          // Hide cursor after typing completes
+          setTimeout(() => setShowCursor(false), 2000);
+        }
+      }, typingSpeed);
+
+      return () => clearInterval(typeInterval);
+    }, startDelay);
+
+    return () => clearTimeout(startTyping);
+  }, []);
+
   return (
     <div className="fixed inset-0 bg-background flex flex-col items-center justify-center overflow-hidden">
       {/* Scan lines */}
@@ -114,14 +146,29 @@ export const LandingScreen = () => {
       ))}
 
       {/* Content */}
-      <div className="relative z-10 flex flex-col items-center gap-5 px-4 max-w-md w-full">
-        {/* Logo */}
+      <div className="relative z-10 flex flex-col items-center gap-4 px-4 max-w-md w-full">
+        {/* Logo with cinematic entrance */}
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.8, delay: 0.5, type: 'spring', stiffness: 150 }}
+          transition={{ duration: 0.8, delay: 0.3, type: 'spring', stiffness: 150 }}
           className="relative"
         >
+          {/* Flash effect on entrance */}
+          <motion.div
+            className="absolute -inset-8 rounded-full"
+            style={{ background: 'radial-gradient(circle, hsl(0 0% 100% / 0.8), transparent 60%)' }}
+            initial={{ opacity: 1, scale: 0.5 }}
+            animate={{ opacity: 0, scale: 2 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          />
+          {/* Expanding ripple */}
+          <motion.div
+            className="absolute -inset-4 rounded-full border-2 border-primary"
+            initial={{ scale: 0.8, opacity: 1 }}
+            animate={{ scale: 2.5, opacity: 0 }}
+            transition={{ duration: 1.2, delay: 0.5 }}
+          />
           <motion.div
             className="absolute -inset-4 rounded-full"
             style={{ background: 'radial-gradient(circle, hsl(var(--primary) / 0.25), transparent 70%)' }}
@@ -133,49 +180,46 @@ export const LandingScreen = () => {
             animate={{ scale: [1, 1.08, 1], opacity: [0.4, 0.8, 0.4] }}
             transition={{ duration: 2.5, repeat: Infinity }}
           />
-          <div className="w-28 h-28 md:w-36 md:h-36 rounded-full overflow-hidden border-2 border-primary/60 relative box-glow">
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-2 border-primary/60 relative box-glow">
             <img src="/ACE.jpg" alt="AlienFlow Logo" className="w-full h-full object-cover" />
           </div>
         </motion.div>
 
-        {/* Title */}
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.8, duration: 0.6 }}
-          className="text-center"
-        >
+        {/* Title with glitch effect */}
+        <div className="text-center">
           <h1
-            className="text-6xl md:text-7xl font-black text-primary text-glow tracking-[0.15em]"
-            style={{ fontFamily: "'Orbitron', sans-serif" }}
+            className="glitch text-5xl md:text-7xl font-black text-primary tracking-[0.12em]"
+            style={{ fontFamily: "'Exo 2', 'Orbitron', sans-serif" }}
           >
             ALIENFLOW
           </h1>
+          {/* Subtitle with typing effect */}
           <p
-            className="text-[11px] md:text-xs text-muted-foreground mt-3 tracking-[0.25em] uppercase"
+            className="text-[10px] md:text-xs text-muted-foreground mt-2 tracking-[0.2em] uppercase h-4"
             style={{ fontFamily: "'Rajdhani', sans-serif" }}
           >
-            ZERO-POINT ENERGY MINING · NEUTRINO PROTOCOL
+            {typedText}
+            {showCursor && <span className="text-primary animate-pulse">▌</span>}
           </p>
-        </motion.div>
+        </div>
 
         {/* Stats */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.1, duration: 0.5 }}
-          className="flex items-center justify-center gap-8"
+          transition={{ delay: 1.8, duration: 0.5 }}
+          className="flex items-center justify-center gap-6 md:gap-8"
         >
           {STATS.map((stat, i) => (
             <div key={i} className="text-center">
               <span
-                className="text-xl md:text-2xl font-bold text-secondary text-glow-gold"
+                className="text-lg md:text-2xl font-bold text-secondary text-glow-gold"
                 style={{ fontFamily: "'Orbitron', sans-serif" }}
               >
                 {stat.label}
               </span>
               <span
-                className="block text-[9px] text-muted-foreground tracking-[0.3em] mt-0.5"
+                className="block text-[8px] md:text-[9px] text-muted-foreground tracking-[0.3em] mt-0.5"
                 style={{ fontFamily: "'Rajdhani', sans-serif" }}
               >
                 {stat.sub}
@@ -191,8 +235,8 @@ export const LandingScreen = () => {
           rel="noopener noreferrer"
           initial={{ y: 40, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 1.4, duration: 0.6, type: 'spring', stiffness: 120 }}
-          className="relative group mt-1 w-full max-w-xs"
+          transition={{ delay: 2.2, duration: 0.6, type: 'spring', stiffness: 120 }}
+          className="relative group w-full max-w-xs"
         >
           <motion.div
             className="absolute -inset-3 rounded-2xl blur-2xl"
@@ -205,15 +249,15 @@ export const LandingScreen = () => {
             animate={{ opacity: [0.3, 1, 0.3] }}
             transition={{ duration: 2, repeat: Infinity }}
           />
-          <div className="relative px-8 py-5 rounded-2xl border-2 border-primary bg-card/90 backdrop-blur-md hover:bg-primary/10 transition-all duration-300 box-glow text-center">
+          <div className="relative px-6 py-4 rounded-2xl border-2 border-primary bg-card/90 backdrop-blur-md hover:bg-primary/10 transition-all duration-300 box-glow text-center">
             <span
-              className="text-2xl md:text-3xl font-black text-primary text-glow tracking-wider block"
+              className="text-xl md:text-2xl font-black text-primary text-glow tracking-wider block"
               style={{ fontFamily: "'Orbitron', sans-serif" }}
             >
               ENTER THE GRID
             </span>
             <span
-              className="text-[10px] text-muted-foreground mt-1 tracking-[0.2em] block"
+              className="text-[9px] text-muted-foreground mt-1 tracking-[0.2em] block"
               style={{ fontFamily: "'Rajdhani', sans-serif" }}
             >
               INITIALIZE VIA TELEGRAM
@@ -221,63 +265,49 @@ export const LandingScreen = () => {
           </div>
         </motion.a>
 
-        {/* Primary socials */}
+        {/* Social Links Grid - Alphabetical with Lucide Icons */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 1.8, duration: 0.6 }}
-          className="flex items-center justify-center gap-4 mt-1 flex-wrap"
+          transition={{ delay: 2.6, duration: 0.6 }}
+          className="grid grid-cols-5 gap-2 mt-2 w-full max-w-sm"
         >
-          {PRIMARY_SOCIALS.map((s) => (
-            <a
-              key={s.label}
-              href={s.soon ? undefined : s.href}
-              target={s.soon ? undefined : '_blank'}
-              rel="noopener noreferrer"
-              className={`flex flex-col items-center gap-0.5 group ${s.soon ? 'opacity-30 cursor-default' : ''}`}
-            >
-              <span className="text-base text-primary/60 group-hover:text-primary transition-colors">{s.icon}</span>
-              <span
-                className="text-[8px] text-muted-foreground tracking-[0.2em] group-hover:text-primary/70 transition-colors"
-                style={{ fontFamily: "'Rajdhani', sans-serif" }}
+          {SOCIAL_LINKS.map((social) => {
+            const IconComponent = social.icon;
+            return (
+              <a
+                key={social.name}
+                href={social.soon ? undefined : social.url}
+                target={social.soon ? undefined : '_blank'}
+                rel="noopener noreferrer"
+                className={`
+                  flex flex-col items-center gap-0.5 p-2 rounded-lg transition-all duration-200
+                  ${social.soon 
+                    ? 'opacity-30 cursor-default' 
+                    : 'hover:bg-primary/10 hover:scale-105 cursor-pointer'
+                  }
+                `}
+                title={social.name}
               >
-                {s.label}{s.soon ? ' ⏳' : ''}
-              </span>
-            </a>
-          ))}
-        </motion.div>
-
-        {/* Secondary socials */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2, duration: 0.6 }}
-          className="flex items-center justify-center gap-3 flex-wrap max-w-xs"
-        >
-          {SECONDARY_SOCIALS.map((s) => (
-            <a
-              key={s.label}
-              href={s.soon ? undefined : s.href}
-              target={s.soon ? undefined : '_blank'}
-              rel="noopener noreferrer"
-              className={`text-[7px] tracking-[0.15em] transition-colors ${
-                s.soon
-                  ? 'text-muted-foreground/30 cursor-default'
-                  : 'text-muted-foreground/60 hover:text-primary/70'
-              }`}
-              style={{ fontFamily: "'Rajdhani', sans-serif" }}
-            >
-              {s.label}{s.soon ? ' ⏳' : ''}
-            </a>
-          ))}
+                <IconComponent className="w-4 h-4 text-primary/70" />
+                <span
+                  className="text-[7px] text-muted-foreground tracking-wider truncate w-full text-center"
+                  style={{ fontFamily: "'Rajdhani', sans-serif" }}
+                >
+                  {social.name.toUpperCase()}
+                  {social.soon && ' ⏳'}
+                </span>
+              </a>
+            );
+          })}
         </motion.div>
 
         {/* Bottom tag */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 2.2 }}
-          className="text-[9px] text-muted-foreground/40 text-center tracking-[0.2em] mt-0"
+          transition={{ delay: 2.8 }}
+          className="text-[8px] text-muted-foreground/40 text-center tracking-[0.2em] mt-1"
           style={{ fontFamily: "'Rajdhani', sans-serif" }}
         >
           ALIENFLOW v0.1 · TON BLOCKCHAIN · DAO POWERED
