@@ -228,20 +228,15 @@ const Index = () => {
         )}
       </AnimatePresence>
 
-      {/* Achievement Toast */}
+      {/* Achievement Toast — auto-dismiss after 4s */}
       <AnimatePresence>
         {newAchievementQueue.length > 0 && (
-          <motion.div
+          <AchievementToast
             key={newAchievementQueue[0].id}
-            initial={{ y: -80, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -80, opacity: 0 }}
-            className="fixed top-20 left-4 right-4 z-[70]"
-          >
-            <motion.div
-              className="bg-card border border-secondary/50 rounded-xl p-3 box-glow-gold flex items-center gap-3 cursor-pointer"
-              onClick={dismissAchievementNotification}
-            >
+            achievement={newAchievementQueue[0]}
+            onDismiss={dismissAchievementNotification}
+          />
+        )}
               <span className="text-2xl">{newAchievementQueue[0].icon}</span>
               <div className="flex-1">
                 <span className="font-display text-xs text-secondary block">🏆 LOGRO DESBLOQUEADO</span>
