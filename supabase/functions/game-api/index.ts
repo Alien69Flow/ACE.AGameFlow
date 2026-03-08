@@ -947,6 +947,8 @@ Deno.serve(async (req) => {
             purchased_at: new Date().toISOString(),
           }, { onConflict: 'profile_id,upgrade_type' });
 
+        const newAchievementsUpgrade = await checkAchievements(supabase, profile.id);
+
         return new Response(
           JSON.stringify({ 
             success: true, 
@@ -954,6 +956,7 @@ Deno.serve(async (req) => {
             newValue: catalog.values[newLevel],
             energy: newEnergy,
             upgradeType,
+            newAchievements: newAchievementsUpgrade,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
