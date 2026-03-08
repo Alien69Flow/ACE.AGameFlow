@@ -342,7 +342,20 @@ export const NetworkScreen = ({
                   </motion.div>
                 );
               })}
-              {leaderboard.length === 0 && <p className="text-center text-muted-foreground text-xs py-8">Cargando ranking...</p>}
+              {leaderboard.length === 0 && (
+                <div className="space-y-1.5">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg bg-card/50 border border-muted/10 animate-pulse">
+                      <div className="w-8 h-5 bg-muted rounded" />
+                      <div className="flex-1 space-y-1">
+                        <div className="h-3 bg-muted rounded w-24" />
+                        <div className="h-2 bg-muted rounded w-16" />
+                      </div>
+                      <div className="h-4 bg-muted rounded w-12" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         )}
