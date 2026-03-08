@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
 import { Zap, Battery, Clock, MousePointerClick, TrendingUp, Lock } from 'lucide-react';
+import { useTelegram } from '@/hooks/useTelegram';
 
 interface UpgradeInfo {
   type: string;
