@@ -303,8 +303,10 @@ export const useGameState = () => {
         ));
         return true;
       }
+      toast.error('❌ No se pudo reclamar la misión');
       return false;
     } catch {
+      toast.error('❌ Error al reclamar misión');
       return false;
     }
   }, [gameState.profileId, missions, initData]);
