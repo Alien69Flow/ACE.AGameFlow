@@ -575,6 +575,25 @@ export const useGameState = () => {
     }
   }, [initData]);
 
+  // Apply energy pack (after TON payment)
+  const applyEnergyPack = useCallback(async (packId: string) => {
+    if (!initData) return false;
+    try {
+      const data = await callGameApi('apply-energy-pack', initData, { packId });
+      if (data.success) {
+        setGameState(prev => ({
+          ...prev,
+          stamina: data.stamina,
+        }));
+        toast.success(`+${data.staminaGain.toLocaleString()} stamina`);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, [initData]);
+
   // Friends list
 
   const fetchFriends = useCallback(async () => {
