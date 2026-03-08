@@ -547,7 +547,6 @@ export const useGameState = () => {
   }, [initData]);
 
   // Lucky wheel
-  const [canSpinFree, setCanSpinFree] = useState(false);
 
   // Fetch wheel status on init
   useEffect(() => {
