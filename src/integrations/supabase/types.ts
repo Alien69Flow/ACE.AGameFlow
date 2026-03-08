@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      clan_members: {
+        Row: {
+          clan_id: string
+          id: string
+          joined_at: string
+          profile_id: string
+          role: string
+        }
+        Insert: {
+          clan_id: string
+          id?: string
+          joined_at?: string
+          profile_id: string
+          role?: string
+        }
+        Update: {
+          clan_id?: string
+          id?: string
+          joined_at?: string
+          profile_id?: string
+          role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clan_members_clan_id_fkey"
+            columns: ["clan_id"]
+            isOneToOne: false
+            referencedRelation: "clans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clan_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clans: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          member_count: number
+          name: string
+          total_energy: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          member_count?: number
+          name: string
+          total_energy?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          member_count?: number
+          name?: string
+          total_energy?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clans_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_combos: {
+        Row: {
+          claimed_by: Json
+          combo: string[]
+          date: string
+        }
+        Insert: {
+          claimed_by?: Json
+          combo: string[]
+          date?: string
+        }
+        Update: {
+          claimed_by?: Json
+          combo?: string[]
+          date?: string
+        }
+        Relationships: []
+      }
       missions_completed: {
         Row: {
           claimed: boolean
@@ -54,57 +146,75 @@ export type Database = {
       }
       profiles: {
         Row: {
+          clan_id: string | null
           created_at: string
           daily_streak: number
           energy: number
           id: string
           last_daily_claim: string | null
+          last_seen_at: string
           last_stamina_update: string
           max_stamina: number
+          max_stamina_level: number
           multiplier: number
           multiplier_expires_at: string | null
+          passive_income_level: number
           referral_code: string | null
           referral_count: number
           referred_by: string | null
+          regen_speed_level: number
           stamina: number
+          tap_power_level: number
           telegram_id: string
           tutorial_completed: boolean
           updated_at: string
           username: string | null
         }
         Insert: {
+          clan_id?: string | null
           created_at?: string
           daily_streak?: number
           energy?: number
           id?: string
           last_daily_claim?: string | null
+          last_seen_at?: string
           last_stamina_update?: string
           max_stamina?: number
+          max_stamina_level?: number
           multiplier?: number
           multiplier_expires_at?: string | null
+          passive_income_level?: number
           referral_code?: string | null
           referral_count?: number
           referred_by?: string | null
+          regen_speed_level?: number
           stamina?: number
+          tap_power_level?: number
           telegram_id: string
           tutorial_completed?: boolean
           updated_at?: string
           username?: string | null
         }
         Update: {
+          clan_id?: string | null
           created_at?: string
           daily_streak?: number
           energy?: number
           id?: string
           last_daily_claim?: string | null
+          last_seen_at?: string
           last_stamina_update?: string
           max_stamina?: number
+          max_stamina_level?: number
           multiplier?: number
           multiplier_expires_at?: string | null
+          passive_income_level?: number
           referral_code?: string | null
           referral_count?: number
           referred_by?: string | null
+          regen_speed_level?: number
           stamina?: number
+          tap_power_level?: number
           telegram_id?: string
           tutorial_completed?: boolean
           updated_at?: string
@@ -112,8 +222,47 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "profiles_clan_id_fkey"
+            columns: ["clan_id"]
+            isOneToOne: false
+            referencedRelation: "clans"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "profiles_referred_by_fkey"
             columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      upgrades: {
+        Row: {
+          id: string
+          level: number
+          profile_id: string
+          purchased_at: string
+          upgrade_type: string
+        }
+        Insert: {
+          id?: string
+          level?: number
+          profile_id: string
+          purchased_at?: string
+          upgrade_type: string
+        }
+        Update: {
+          id?: string
+          level?: number
+          profile_id?: string
+          purchased_at?: string
+          upgrade_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upgrades_profile_id_fkey"
+            columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
