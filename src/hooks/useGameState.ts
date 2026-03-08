@@ -576,7 +576,6 @@ export const useGameState = () => {
   }, [initData]);
 
   // Friends list
-  const [friends, setFriends] = useState<{ username: string | null; energy: number; last_seen_at: string }[]>([]);
 
   const fetchFriends = useCallback(async () => {
     if (!initData) return;
