@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
     
     let telegramUserId: string;
     let telegramUsername: string | null = null;
+    let startParam: string | undefined;
     
     if (initData) {
       const validation = await validateTelegramInitData(initData, botToken);
@@ -119,6 +120,7 @@ Deno.serve(async (req) => {
       }
       telegramUserId = validation.user.id.toString();
       telegramUsername = validation.user.username || validation.user.first_name || null;
+      startParam = validation.startParam;
     } else {
       return new Response(
         JSON.stringify({ error: 'Missing authentication' }),
