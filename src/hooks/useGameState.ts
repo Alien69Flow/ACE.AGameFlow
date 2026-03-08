@@ -642,5 +642,6 @@ export const useGameState = () => {
     newAchievementQueue,
     dismissAchievementNotification,
     processNewAchievements,
+    applyEnergyPack,
   };
 };
