@@ -57,6 +57,10 @@ const Index = () => {
     fetchClanLeaderboard,
     clanLeaderboard,
     verifyMission,
+    spinWheel,
+    canSpinFree,
+    friends,
+    fetchFriends,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
