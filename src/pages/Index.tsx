@@ -286,6 +286,9 @@ const Index = () => {
             onFetchClanLeaderboard={fetchClanLeaderboard}
             friends={friends}
             onFetchFriends={fetchFriends}
+            achievements={achievements}
+            onFetchAchievements={fetchAchievements}
+            onClaimAchievement={claimAchievement}
           />
         )}
         {currentScreen === 'airdrop' && (
