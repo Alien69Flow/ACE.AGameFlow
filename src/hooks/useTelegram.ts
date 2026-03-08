@@ -9,8 +9,10 @@ export const useTelegram = () => {
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
+    // SDK is always loaded, so check if we actually have Telegram context
+    const hasTelegramContext = !!(tg?.initData && tg.initData.length > 0);
     
-    if (tg) {
+    if (hasTelegramContext) {
       tg.ready();
       tg.expand();
       setIsTelegram(true);
@@ -23,8 +25,8 @@ export const useTelegram = () => {
       }
       setIsReady(true);
     } else {
-      // Not in Telegram - mark as ready but no initData so landing shows
-      console.warn('Not in Telegram WebApp - showing landing state');
+      // Not in Telegram - show landing page
+      console.warn('No Telegram context detected - showing landing state');
       setIsTelegram(false);
       setInitData(null);
       setUserId(null);
