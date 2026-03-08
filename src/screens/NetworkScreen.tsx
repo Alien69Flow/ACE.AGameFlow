@@ -101,11 +101,13 @@ export const NetworkScreen = ({
   onLeaveClan,
   clanLeaderboard,
   onFetchClanLeaderboard,
+  friends,
+  onFetchFriends,
 }: NetworkScreenProps) => {
   const [refInput, setRefInput] = useState('');
   const [refStatus, setRefStatus] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'social' | 'leaderboard' | 'clans'>('social');
+  const [activeTab, setActiveTab] = useState<'social' | 'leaderboard' | 'clans' | 'friends'>('social');
   const [clanName, setClanName] = useState('');
   const [clanStatus, setClanStatus] = useState<string | null>(null);
 
