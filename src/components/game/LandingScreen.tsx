@@ -266,25 +266,25 @@ export const LandingScreen = () => {
         </motion.a>
 
         {/* Social Links Grid - Alphabetical with Lucide Icons */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2.6, duration: 0.6 }}
-          className="grid grid-cols-5 gap-2 mt-2 w-full max-w-sm"
-        >
-          {SOCIAL_LINKS.map((social) => {
+        <div className="grid grid-cols-5 max-[360px]:grid-cols-4 gap-2 mt-2 w-full max-w-sm">
+          {SOCIAL_LINKS.map((social, index) => {
             const IconComponent = social.icon;
             return (
-              <a
+              <motion.a
                 key={social.name}
                 href={social.soon ? undefined : social.url}
                 target={social.soon ? undefined : '_blank'}
                 rel="noopener noreferrer"
+                aria-label={social.soon ? `${social.name} (coming soon)` : `Visit ${social.name}`}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 2.6 + index * 0.05, duration: 0.35 }}
+                whileHover={social.soon ? {} : { scale: 1.15 }}
                 className={`
                   flex flex-col items-center gap-0.5 p-2 rounded-lg transition-all duration-200
                   ${social.soon 
                     ? 'opacity-30 cursor-default' 
-                    : 'hover:bg-primary/10 hover:scale-105 cursor-pointer'
+                    : 'hover:bg-primary/10 hover:shadow-[0_0_8px_hsl(var(--primary)/0.3)] cursor-pointer'
                   }
                 `}
                 title={social.name}
@@ -297,10 +297,10 @@ export const LandingScreen = () => {
                   {social.name.toUpperCase()}
                   {social.soon && ' ⏳'}
                 </span>
-              </a>
+              </motion.a>
             );
           })}
-        </motion.div>
+        </div>
 
         {/* Bottom tag */}
         <motion.p
