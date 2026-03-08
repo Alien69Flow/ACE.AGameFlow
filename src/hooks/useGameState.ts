@@ -510,9 +510,6 @@ export const useGameState = () => {
   }, [initData]);
 
   // Achievements
-  const [achievements, setAchievements] = useState<AchievementInfo[]>([]);
-  const [achievementCounts, setAchievementCounts] = useState<{ unlocked: number; total: number }>({ unlocked: 0, total: 13 });
-  const [newAchievementQueue, setNewAchievementQueue] = useState<NewAchievement[]>([]);
 
   const processNewAchievements = useCallback((newAchievements?: NewAchievement[]) => {
     if (newAchievements && newAchievements.length > 0) {
