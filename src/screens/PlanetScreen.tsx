@@ -5,6 +5,7 @@ import { HexSlot } from '@/components/game/HexSlot';
 import { getTutorialHighlight } from '@/components/game/Tutorial';
 import { LuckyWheel } from '@/components/game/LuckyWheel';
 import { Gift, Zap, Flame, Sparkles } from 'lucide-react';
+import { useTelegram } from '@/hooks/useTelegram';
 
 interface PlanetScreenProps {
   onEnterMine: () => void;
