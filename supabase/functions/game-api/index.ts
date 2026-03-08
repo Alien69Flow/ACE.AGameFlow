@@ -154,6 +154,30 @@ Deno.serve(async (req) => {
           
           if (createError) throw createError;
           profile = newProfile;
+
+          // Auto-apply deep link referral on first launch
+          if (startParam && profile && !profile.referred_by) {
+            const { data: referrer } = await supabase
+              .from('profiles')
+              .select('id, energy, referral_count')
+              .eq('referral_code', startParam)
+              .single();
+            
+            if (referrer && referrer.id !== profile.id) {
+              await supabase
+                .from('profiles')
+                .update({ referred_by: referrer.id, energy: profile.energy + 50 })
+                .eq('id', profile.id);
+              
+              await supabase
+                .from('profiles')
+                .update({ energy: referrer.energy + 100, referral_count: referrer.referral_count + 1 })
+                .eq('id', referrer.id);
+              
+              profile.energy = profile.energy + 50;
+              profile.referred_by = referrer.id;
+            }
+          }
         }
         
         // Generate referral code if missing
