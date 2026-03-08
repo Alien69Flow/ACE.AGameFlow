@@ -98,6 +98,7 @@ const Index = () => {
     claimAchievement,
     newAchievementQueue,
     dismissAchievementNotification,
+    applyEnergyPack,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
