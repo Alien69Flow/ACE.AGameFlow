@@ -37,6 +37,19 @@ interface FriendEntry {
   last_seen_at: string;
 }
 
+interface AchievementInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  reward: number;
+  unlocked: boolean;
+  unlockedAt: string | null;
+  claimed: boolean;
+  progress: number;
+  target: number;
+}
+
 interface NetworkScreenProps {
   missions: Mission[];
   onStartMission: (id: string) => void;
