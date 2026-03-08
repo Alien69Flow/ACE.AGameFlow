@@ -119,6 +119,9 @@ export const NetworkScreen = ({
   onFetchClanLeaderboard,
   friends,
   onFetchFriends,
+  achievements,
+  onFetchAchievements,
+  onClaimAchievement,
 }: NetworkScreenProps) => {
   const [refInput, setRefInput] = useState('');
   const [refStatus, setRefStatus] = useState<string | null>(null);
