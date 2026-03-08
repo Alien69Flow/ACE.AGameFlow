@@ -433,6 +433,9 @@ Deno.serve(async (req) => {
           );
         }
         
+        // Check achievements after tap
+        const newAchievements = await checkAchievements(supabase, profile.id);
+
         return new Response(
           JSON.stringify({ 
             success: true, 
@@ -440,6 +443,7 @@ Deno.serve(async (req) => {
             stamina: updatedProfile[0].stamina,
             multiplier: activeMultiplier,
             tapPower,
+            newAchievements,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
