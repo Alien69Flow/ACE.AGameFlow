@@ -72,6 +72,9 @@ interface NetworkScreenProps {
   onFetchClanLeaderboard: () => void;
   friends: FriendEntry[];
   onFetchFriends: () => void;
+  achievements: AchievementInfo[];
+  onFetchAchievements: () => void;
+  onClaimAchievement: (id: string) => Promise<boolean>;
 }
 
 const ecosystemLinks = [
