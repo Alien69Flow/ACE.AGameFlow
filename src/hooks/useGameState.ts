@@ -127,6 +127,11 @@ export const useGameState = () => {
   const [offlineEarnings, setOfflineEarnings] = useState(0);
   const [clan, setClan] = useState<ClanInfo | null>(null);
   const [clanLeaderboard, setClanLeaderboard] = useState<ClanInfo[]>([]);
+  const [achievements, setAchievements] = useState<AchievementInfo[]>([]);
+  const [achievementCounts, setAchievementCounts] = useState<{ unlocked: number; total: number }>({ unlocked: 0, total: 13 });
+  const [newAchievementQueue, setNewAchievementQueue] = useState<NewAchievement[]>([]);
+  const [canSpinFree, setCanSpinFree] = useState(false);
+  const [friends, setFriends] = useState<{ username: string | null; energy: number; last_seen_at: string }[]>([]);
   
   const staminaIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMiningRef = useRef(false);
@@ -505,9 +510,6 @@ export const useGameState = () => {
   }, [initData]);
 
   // Achievements
-  const [achievements, setAchievements] = useState<AchievementInfo[]>([]);
-  const [achievementCounts, setAchievementCounts] = useState<{ unlocked: number; total: number }>({ unlocked: 0, total: 13 });
-  const [newAchievementQueue, setNewAchievementQueue] = useState<NewAchievement[]>([]);
 
   const processNewAchievements = useCallback((newAchievements?: NewAchievement[]) => {
     if (newAchievements && newAchievements.length > 0) {
@@ -545,7 +547,6 @@ export const useGameState = () => {
   }, [initData]);
 
   // Lucky wheel
-  const [canSpinFree, setCanSpinFree] = useState(false);
 
   // Fetch wheel status on init
   useEffect(() => {
@@ -575,7 +576,6 @@ export const useGameState = () => {
   }, [initData]);
 
   // Friends list
-  const [friends, setFriends] = useState<{ username: string | null; energy: number; last_seen_at: string }[]>([]);
 
   const fetchFriends = useCallback(async () => {
     if (!initData) return;
