@@ -557,8 +557,11 @@ Deno.serve(async (req) => {
           .update({ energy: newEnergy })
           .eq('id', profile.id);
         
+        // Check achievements after mission claim
+        const newAchievementsMission = await checkAchievements(supabase, profile.id);
+
         return new Response(
-          JSON.stringify({ success: true, energy: newEnergy }),
+          JSON.stringify({ success: true, energy: newEnergy, newAchievements: newAchievementsMission }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
