@@ -27,6 +27,7 @@ const UPGRADE_META: Record<string, { icon: typeof Zap; label: string; unit: stri
 };
 
 export const UpgradesScreen = ({ energy, onFetchUpgrades, onBuyUpgrade }: UpgradesScreenProps) => {
+  const { hapticFeedback } = useTelegram();
   const [upgrades, setUpgrades] = useState<UpgradeInfo[]>([]);
   const [currentEnergy, setCurrentEnergy] = useState(energy);
   const [buying, setBuying] = useState<string | null>(null);
