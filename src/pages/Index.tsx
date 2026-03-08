@@ -269,18 +269,6 @@ const Index = () => {
             onDismiss={dismissAchievementNotification}
           />
         )}
-              <span className="text-2xl">{newAchievementQueue[0].icon}</span>
-              <div className="flex-1">
-                <span className="font-display text-xs text-secondary block">🏆 LOGRO DESBLOQUEADO</span>
-                <span className="font-display text-sm font-bold text-foreground">{newAchievementQueue[0].name}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Trophy className="w-4 h-4 text-secondary" />
-                <span className="font-display text-xs text-secondary">+{newAchievementQueue[0].reward}</span>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
       </AnimatePresence>
 
       {/* Main Content */}

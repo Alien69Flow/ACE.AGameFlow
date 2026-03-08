@@ -543,7 +543,23 @@ export const NetworkScreen = ({
                   </motion.div>
                 );
               })}
-              {achievements.length === 0 && <p className="text-center text-muted-foreground text-xs py-8">Cargando logros...</p>}
+              {achievements.length === 0 && (
+                <div className="space-y-2">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="p-3 rounded-xl border bg-card/50 border-muted/20 animate-pulse">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-muted rounded-lg" />
+                        <div className="flex-1 space-y-1.5">
+                          <div className="h-3 bg-muted rounded w-28" />
+                          <div className="h-2 bg-muted rounded w-40" />
+                          <div className="h-1.5 bg-muted rounded-full w-full mt-1" />
+                        </div>
+                        <div className="h-6 bg-muted rounded w-14" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </section>
         )}

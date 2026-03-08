@@ -48,6 +48,7 @@ export const UpgradesScreen = ({ energy, onFetchUpgrades, onBuyUpgrade }: Upgrad
     setBuying(type);
     const result = await onBuyUpgrade(type);
     if (result?.success) {
+      hapticFeedback('medium');
       await fetchData();
     }
     setBuying(null);

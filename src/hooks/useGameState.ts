@@ -427,8 +427,10 @@ export const useGameState = () => {
         }
         return data;
       }
+      toast.error('❌ No se pudo comprar la mejora');
       return null;
     } catch {
+      toast.error('❌ Error al comprar mejora');
       return null;
     }
   }, [initData]);

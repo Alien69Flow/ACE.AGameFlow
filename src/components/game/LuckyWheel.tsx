@@ -75,6 +75,7 @@ export const LuckyWheel = ({ isOpen, onClose, onSpin, canSpinFree }: LuckyWheelP
         setResult(PRIZES[prizeIndex]);
         setShowResult(true);
         setIsSpinning(false);
+        hapticFeedback('heavy');
       }, 4000);
     } catch {
       setIsSpinning(false);

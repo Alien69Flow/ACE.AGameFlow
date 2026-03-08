@@ -39,6 +39,7 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
     const result = await onClaimDaily();
     if (result) {
       setClaimResult(result);
+      hapticFeedback('heavy');
     }
     setClaiming(false);
   };
