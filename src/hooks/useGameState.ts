@@ -16,6 +16,11 @@ interface GameState {
   lastDailyClaim: string | null;
   multiplier: number;
   multiplierExpiresAt: string | null;
+  tapPowerLevel: number;
+  passiveIncomeLevel: number;
+  maxStaminaLevel: number;
+  regenSpeedLevel: number;
+  clanId: string | null;
 }
 
 interface Mission {
@@ -33,6 +38,23 @@ interface LeaderboardEntry {
   username: string | null;
   energy: number;
   referral_count: number;
+}
+
+interface ClanInfo {
+  id: string;
+  name: string;
+  member_count: number;
+  total_energy: number;
+}
+
+interface UpgradeInfo {
+  type: string;
+  currentLevel: number;
+  maxLevel: number;
+  currentValue: number;
+  nextValue: number | null;
+  nextCost: number | null;
+  canAfford: boolean;
 }
 
 async function callGameApi(endpoint: string, initData: string, body?: object) {
@@ -68,12 +90,20 @@ export const useGameState = () => {
     lastDailyClaim: null,
     multiplier: 1,
     multiplierExpiresAt: null,
+    tapPowerLevel: 0,
+    passiveIncomeLevel: 0,
+    maxStaminaLevel: 0,
+    regenSpeedLevel: 0,
+    clanId: null,
   });
   const [missions, setMissions] = useState<Mission[]>([]);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [userRank, setUserRank] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [dailyRewardAvailable, setDailyRewardAvailable] = useState(false);
+  const [offlineEarnings, setOfflineEarnings] = useState(0);
+  const [clan, setClan] = useState<ClanInfo | null>(null);
+  const [clanLeaderboard, setClanLeaderboard] = useState<ClanInfo[]>([]);
   
   const staminaIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMiningRef = useRef(false);
@@ -101,7 +131,22 @@ export const useGameState = () => {
             lastDailyClaim: p.last_daily_claim || null,
             multiplier: p.multiplier || 1,
             multiplierExpiresAt: p.multiplier_expires_at || null,
+            tapPowerLevel: p.tap_power_level || 0,
+            passiveIncomeLevel: p.passive_income_level || 0,
+            maxStaminaLevel: p.max_stamina_level || 0,
+            regenSpeedLevel: p.regen_speed_level || 0,
+            clanId: p.clan_id || null,
           });
+
+          // Offline earnings
+          if (data.offlineEarnings > 0) {
+            setOfflineEarnings(data.offlineEarnings);
+          }
+
+          // Clan info
+          if (data.clan) {
+            setClan(data.clan);
+          }
 
           // Check daily reward
           if (!p.last_daily_claim) {
@@ -256,8 +301,8 @@ export const useGameState = () => {
         return { success: true };
       }
       return { success: false, error: 'Failed' };
-    } catch (e: any) {
-      return { success: false, error: e.message };
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : 'Error' };
     }
   }, [initData]);
 
@@ -311,6 +356,107 @@ export const useGameState = () => {
     }
   }, [initData]);
 
+  // Upgrades
+  const fetchUpgrades = useCallback(async () => {
+    if (!initData) return null;
+    try {
+      const data = await callGameApi('get-upgrades', initData);
+      return data as { upgrades: UpgradeInfo[]; energy: number };
+    } catch {
+      return null;
+    }
+  }, [initData]);
+
+  const buyUpgrade = useCallback(async (upgradeType: string) => {
+    if (!initData) return null;
+    try {
+      const data = await callGameApi('buy-upgrade', initData, { upgradeType });
+      if (data.success) {
+        setGameState(prev => ({
+          ...prev,
+          energy: data.energy,
+          [`${data.upgradeType}Level`]: data.newLevel, // won't actually set due to camelCase mismatch, but energy updates
+        }));
+        // Refresh specific level
+        const levelMap: Record<string, keyof GameState> = {
+          tap_power: 'tapPowerLevel',
+          passive_income: 'passiveIncomeLevel',
+          max_stamina: 'maxStaminaLevel',
+          regen_speed: 'regenSpeedLevel',
+        };
+        const key = levelMap[data.upgradeType];
+        if (key) {
+          setGameState(prev => ({ ...prev, [key]: data.newLevel, energy: data.energy }));
+        }
+        if (data.upgradeType === 'max_stamina') {
+          setGameState(prev => ({ ...prev, maxStamina: data.newValue }));
+        }
+        return data;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [initData]);
+
+  // Dismiss offline earnings
+  const dismissOfflineEarnings = useCallback(() => {
+    setOfflineEarnings(0);
+  }, []);
+
+  // Clan actions
+  const createClan = useCallback(async (name: string) => {
+    if (!initData) return { success: false, error: 'Not ready' };
+    try {
+      const data = await callGameApi('create-clan', initData, { name });
+      if (data.success) {
+        setGameState(prev => ({ ...prev, clanId: data.clan.id, energy: data.energy }));
+        setClan(data.clan);
+        return { success: true };
+      }
+      return { success: false, error: 'Failed' };
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : 'Error' };
+    }
+  }, [initData]);
+
+  const joinClan = useCallback(async (clanId: string) => {
+    if (!initData) return { success: false, error: 'Not ready' };
+    try {
+      const data = await callGameApi('join-clan', initData, { clanId });
+      if (data.success) {
+        setGameState(prev => ({ ...prev, clanId }));
+        return { success: true };
+      }
+      return { success: false, error: 'Failed' };
+    } catch (e: unknown) {
+      return { success: false, error: e instanceof Error ? e.message : 'Error' };
+    }
+  }, [initData]);
+
+  const leaveClan = useCallback(async () => {
+    if (!initData) return false;
+    try {
+      const data = await callGameApi('leave-clan', initData);
+      if (data.success) {
+        setGameState(prev => ({ ...prev, clanId: null }));
+        setClan(null);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, [initData]);
+
+  const fetchClanLeaderboard = useCallback(async () => {
+    if (!initData) return;
+    try {
+      const data = await callGameApi('clan-leaderboard', initData);
+      setClanLeaderboard(data.clans || []);
+    } catch { /* silent */ }
+  }, [initData]);
+
   return {
     gameState,
     missions,
@@ -327,5 +473,15 @@ export const useGameState = () => {
     leaderboard,
     userRank,
     activateMultiplier,
+    fetchUpgrades,
+    buyUpgrade,
+    offlineEarnings,
+    dismissOfflineEarnings,
+    clan,
+    createClan,
+    joinClan,
+    leaveClan,
+    fetchClanLeaderboard,
+    clanLeaderboard,
   };
 };

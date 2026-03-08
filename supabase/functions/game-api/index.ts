@@ -76,6 +76,14 @@ function generateReferralCode(): string {
   return code;
 }
 
+// Upgrade catalog
+const UPGRADE_CATALOG: Record<string, { values: number[]; costs: number[]; maxLevel: number }> = {
+  tap_power:      { values: [1, 2, 3, 5, 8],         costs: [100, 500, 2000, 8000, 25000],  maxLevel: 5 },
+  passive_income: { values: [0, 5, 15, 30, 60],      costs: [200, 1000, 5000, 15000, 40000], maxLevel: 5 },
+  max_stamina:    { values: [100, 200, 500, 1000, 2000], costs: [150, 800, 3000, 10000, 30000], maxLevel: 5 },
+  regen_speed:    { values: [1, 2, 3, 5, 8],          costs: [300, 1200, 4000, 12000, 35000], maxLevel: 5 },
+};
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -143,7 +151,7 @@ Deno.serve(async (req) => {
           profile = newProfile;
         }
         
-        // Generate referral code if missing (existing users)
+        // Generate referral code if missing
         if (profile && !profile.referral_code) {
           const code = generateReferralCode();
           await supabase
@@ -153,30 +161,83 @@ Deno.serve(async (req) => {
           profile.referral_code = code;
         }
         
-        // Calculate stamina regeneration
+        // Calculate offline earnings from passive income
+        let offlineEarnings = 0;
+        if (profile) {
+          const lastSeen = new Date(profile.last_seen_at);
+          const now = new Date();
+          const hoursAway = Math.floor((now.getTime() - lastSeen.getTime()) / (1000 * 60 * 60));
+          
+          if (hoursAway > 0 && profile.passive_income_level > 0) {
+            const passiveRate = UPGRADE_CATALOG.passive_income.values[profile.passive_income_level] || 0;
+            offlineEarnings = Math.min(passiveRate * hoursAway, passiveRate * 8); // Cap at 8h
+          }
+        }
+
+        // Calculate stamina regeneration (with regen_speed upgrade)
         if (profile) {
           const lastUpdate = new Date(profile.last_stamina_update);
           const now = new Date();
           const secondsElapsed = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
-          const staminaRegen = Math.floor(secondsElapsed / 60);
-          const newStamina = Math.min(profile.stamina + staminaRegen, profile.max_stamina);
+          const regenRate = UPGRADE_CATALOG.regen_speed.values[profile.regen_speed_level] || 1;
+          const staminaRegen = Math.floor(secondsElapsed / 60) * regenRate;
+          
+          // Get max stamina from upgrade
+          const actualMaxStamina = UPGRADE_CATALOG.max_stamina.values[profile.max_stamina_level] || 100;
+          const newStamina = Math.min(profile.stamina + staminaRegen, actualMaxStamina);
+          
+          const updates: Record<string, unknown> = { 
+            last_seen_at: now.toISOString(),
+            max_stamina: actualMaxStamina,
+          };
           
           if (newStamina !== profile.stamina) {
-            await supabase
-              .from('profiles')
-              .update({ stamina: newStamina, last_stamina_update: now.toISOString() })
-              .eq('id', profile.id);
+            updates.stamina = newStamina;
+            updates.last_stamina_update = now.toISOString();
             profile.stamina = newStamina;
           }
+          
+          if (offlineEarnings > 0) {
+            updates.energy = profile.energy + offlineEarnings;
+            profile.energy = profile.energy + offlineEarnings;
+          }
+          
+          profile.max_stamina = actualMaxStamina;
+          
+          await supabase.from('profiles').update(updates).eq('id', profile.id);
         }
         
+        // Get upgrades
+        const { data: upgrades } = await supabase
+          .from('upgrades')
+          .select('upgrade_type, level')
+          .eq('profile_id', profile.id);
+        
+        // Get completed missions
         const { data: completedMissions } = await supabase
           .from('missions_completed')
           .select('*')
           .eq('profile_id', profile.id);
+
+        // Get clan info
+        let clanInfo = null;
+        if (profile.clan_id) {
+          const { data: clan } = await supabase
+            .from('clans')
+            .select('id, name, member_count, total_energy')
+            .eq('id', profile.clan_id)
+            .single();
+          clanInfo = clan;
+        }
         
         return new Response(
-          JSON.stringify({ profile, missions: completedMissions || [] }),
+          JSON.stringify({ 
+            profile, 
+            missions: completedMissions || [],
+            upgrades: upgrades || [],
+            offlineEarnings,
+            clan: clanInfo,
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -184,7 +245,7 @@ Deno.serve(async (req) => {
       case 'tap': {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, energy, stamina, multiplier, multiplier_expires_at')
+          .select('id, energy, stamina, multiplier, multiplier_expires_at, tap_power_level')
           .eq('telegram_id', telegramUserId)
           .single();
         
@@ -202,13 +263,15 @@ Deno.serve(async (req) => {
           );
         }
         
+        // Tap power from upgrade
+        const tapPower = UPGRADE_CATALOG.tap_power.values[profile.tap_power_level] || 1;
+        
         // Check active multiplier
         let activeMultiplier = 1;
         if (profile.multiplier > 1 && profile.multiplier_expires_at) {
           if (new Date(profile.multiplier_expires_at) > new Date()) {
             activeMultiplier = profile.multiplier;
           } else {
-            // Expired — reset
             await supabase
               .from('profiles')
               .update({ multiplier: 1, multiplier_expires_at: null })
@@ -216,7 +279,7 @@ Deno.serve(async (req) => {
           }
         }
         
-        const energyGain = 1 * activeMultiplier;
+        const energyGain = tapPower * activeMultiplier;
         const newEnergy = profile.energy + energyGain;
         const newStamina = profile.stamina - 1;
         
@@ -255,6 +318,7 @@ Deno.serve(async (req) => {
             energy: updatedProfile[0].energy, 
             stamina: updatedProfile[0].stamina,
             multiplier: activeMultiplier,
+            tapPower,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -402,7 +466,7 @@ Deno.serve(async (req) => {
       case 'sync-stamina': {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, stamina, max_stamina, last_stamina_update')
+          .select('id, stamina, max_stamina, last_stamina_update, regen_speed_level, max_stamina_level')
           .eq('telegram_id', telegramUserId)
           .single();
         
@@ -416,18 +480,20 @@ Deno.serve(async (req) => {
         const lastUpdate = new Date(profile.last_stamina_update);
         const now = new Date();
         const secondsElapsed = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
-        const staminaRegen = Math.floor(secondsElapsed / 60);
-        const newStamina = Math.min(profile.stamina + staminaRegen, profile.max_stamina);
+        const regenRate = UPGRADE_CATALOG.regen_speed.values[profile.regen_speed_level] || 1;
+        const staminaRegen = Math.floor(secondsElapsed / 60) * regenRate;
+        const actualMaxStamina = UPGRADE_CATALOG.max_stamina.values[profile.max_stamina_level] || 100;
+        const newStamina = Math.min(profile.stamina + staminaRegen, actualMaxStamina);
         
         if (newStamina !== profile.stamina) {
           await supabase
             .from('profiles')
-            .update({ stamina: newStamina, last_stamina_update: now.toISOString() })
+            .update({ stamina: newStamina, last_stamina_update: now.toISOString(), max_stamina: actualMaxStamina })
             .eq('id', profile.id);
         }
         
         return new Response(
-          JSON.stringify({ stamina: newStamina, maxStamina: profile.max_stamina }),
+          JSON.stringify({ stamina: newStamina, maxStamina: actualMaxStamina }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -476,7 +542,6 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Get current user profile
         const { data: profile } = await supabase
           .from('profiles')
           .select('id, energy, referred_by, referral_code')
@@ -504,7 +569,6 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Find referrer
         const { data: referrer } = await supabase
           .from('profiles')
           .select('id, energy, referral_count')
@@ -518,21 +582,14 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Apply rewards
         await supabase
           .from('profiles')
-          .update({ 
-            referred_by: referrer.id, 
-            energy: profile.energy + 50 
-          })
+          .update({ referred_by: referrer.id, energy: profile.energy + 50 })
           .eq('id', profile.id);
 
         await supabase
           .from('profiles')
-          .update({ 
-            energy: referrer.energy + 100, 
-            referral_count: referrer.referral_count + 1 
-          })
+          .update({ energy: referrer.energy + 100, referral_count: referrer.referral_count + 1 })
           .eq('id', referrer.id);
 
         return new Response(
@@ -561,19 +618,13 @@ Deno.serve(async (req) => {
         if (lastClaim) {
           const hoursSinceClaim = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60);
           if (hoursSinceClaim < 24) {
-            const nextClaimAt = new Date(lastClaim.getTime() + 24 * 60 * 60 * 1000);
             return new Response(
-              JSON.stringify({ 
-                error: 'Already claimed today', 
-                nextClaimAt: nextClaimAt.toISOString(),
-                streak: profile.daily_streak,
-              }),
+              JSON.stringify({ error: 'Already claimed today', streak: profile.daily_streak }),
               { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
         }
 
-        // Calculate streak
         let newStreak = 1;
         if (lastClaim) {
           const hoursSinceClaim = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60);
@@ -582,27 +633,16 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Escalating reward: 10 * streak, max 100
         const reward = Math.min(newStreak * 10, 100);
         const newEnergy = profile.energy + reward;
 
         await supabase
           .from('profiles')
-          .update({ 
-            energy: newEnergy, 
-            last_daily_claim: now.toISOString(), 
-            daily_streak: newStreak 
-          })
+          .update({ energy: newEnergy, last_daily_claim: now.toISOString(), daily_streak: newStreak })
           .eq('id', profile.id);
 
         return new Response(
-          JSON.stringify({ 
-            success: true, 
-            reward, 
-            streak: newStreak, 
-            energy: newEnergy,
-            nextClaimAt: new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString(),
-          }),
+          JSON.stringify({ success: true, reward, streak: newStreak, energy: newEnergy }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -614,7 +654,6 @@ Deno.serve(async (req) => {
           .order('energy', { ascending: false })
           .limit(50);
 
-        // Get current user rank
         const { data: profile } = await supabase
           .from('profiles')
           .select('id, energy, username')
@@ -631,19 +670,12 @@ Deno.serve(async (req) => {
         }
 
         return new Response(
-          JSON.stringify({ 
-            leaderboard: topUsers || [], 
-            userRank,
-            userEnergy: profile?.energy || 0,
-            userName: profile?.username || 'Anonymous',
-          }),
+          JSON.stringify({ leaderboard: topUsers || [], userRank, userEnergy: profile?.energy || 0 }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       case 'buy-multiplier': {
-        // This is validated client-side via TON transaction
-        // Server just activates the multiplier after payment confirmation
         const { data: profile } = await supabase
           .from('profiles')
           .select('id, multiplier, multiplier_expires_at')
@@ -666,6 +698,407 @@ Deno.serve(async (req) => {
 
         return new Response(
           JSON.stringify({ success: true, multiplier: 2, expiresAt }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // ---- NEW ENDPOINTS ----
+
+      case 'get-upgrades': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy, tap_power_level, passive_income_level, max_stamina_level, regen_speed_level')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const upgradeInfo = Object.entries(UPGRADE_CATALOG).map(([type, catalog]) => {
+          const levelKey = `${type}_level` as keyof typeof profile;
+          const currentLevel = (profile[levelKey] as number) || 0;
+          const nextCost = currentLevel < catalog.maxLevel ? catalog.costs[currentLevel] : null;
+          const currentValue = catalog.values[currentLevel];
+          const nextValue = currentLevel < catalog.maxLevel ? catalog.values[currentLevel + 1] : null;
+          
+          return {
+            type,
+            currentLevel,
+            maxLevel: catalog.maxLevel,
+            currentValue,
+            nextValue,
+            nextCost,
+            canAfford: nextCost !== null && profile.energy >= nextCost,
+          };
+        });
+
+        return new Response(
+          JSON.stringify({ upgrades: upgradeInfo, energy: profile.energy }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'buy-upgrade': {
+        const body = await req.json();
+        const { upgradeType } = body;
+
+        if (!upgradeType || !UPGRADE_CATALOG[upgradeType]) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid upgrade type' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const catalog = UPGRADE_CATALOG[upgradeType];
+        const levelColumn = `${upgradeType}_level`;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select(`id, energy, ${levelColumn}`)
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const currentLevel = (profile as Record<string, unknown>)[levelColumn] as number || 0;
+        
+        if (currentLevel >= catalog.maxLevel) {
+          return new Response(
+            JSON.stringify({ error: 'Max level reached' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const cost = catalog.costs[currentLevel];
+        if (profile.energy < cost) {
+          return new Response(
+            JSON.stringify({ error: 'Not enough energy', required: cost, current: profile.energy }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const newLevel = currentLevel + 1;
+        const newEnergy = profile.energy - cost;
+
+        // Update profile level + energy
+        const updateData: Record<string, unknown> = { 
+          energy: newEnergy, 
+          [levelColumn]: newLevel 
+        };
+        
+        // If upgrading max_stamina, also update the max_stamina column
+        if (upgradeType === 'max_stamina') {
+          updateData.max_stamina = catalog.values[newLevel];
+        }
+
+        await supabase
+          .from('profiles')
+          .update(updateData)
+          .eq('id', profile.id);
+
+        // Upsert upgrade record
+        await supabase
+          .from('upgrades')
+          .upsert({
+            profile_id: profile.id,
+            upgrade_type: upgradeType,
+            level: newLevel,
+            purchased_at: new Date().toISOString(),
+          }, { onConflict: 'profile_id,upgrade_type' });
+
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            newLevel, 
+            newValue: catalog.values[newLevel],
+            energy: newEnergy,
+            upgradeType,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'create-clan': {
+        const body = await req.json();
+        const { name } = body;
+
+        if (!name || typeof name !== 'string' || name.length < 3 || name.length > 20) {
+          return new Response(
+            JSON.stringify({ error: 'Clan name must be 3-20 characters' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, clan_id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (profile.clan_id) {
+          return new Response(
+            JSON.stringify({ error: 'Already in a clan' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Cost to create clan: 500 energy
+        if (profile.energy < 500) {
+          return new Response(
+            JSON.stringify({ error: 'Need 500 energy to create a clan' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: clan, error: clanError } = await supabase
+          .from('clans')
+          .insert({ name, created_by: profile.id, total_energy: profile.energy - 500 })
+          .select()
+          .single();
+
+        if (clanError) {
+          if (clanError.code === '23505') {
+            return new Response(
+              JSON.stringify({ error: 'Clan name already taken' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          throw clanError;
+        }
+
+        await supabase
+          .from('clan_members')
+          .insert({ profile_id: profile.id, clan_id: clan.id, role: 'leader' });
+
+        await supabase
+          .from('profiles')
+          .update({ clan_id: clan.id, energy: profile.energy - 500 })
+          .eq('id', profile.id);
+
+        return new Response(
+          JSON.stringify({ success: true, clan, energy: profile.energy - 500 }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'join-clan': {
+        const body = await req.json();
+        const { clanId } = body;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, clan_id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (profile.clan_id) {
+          return new Response(
+            JSON.stringify({ error: 'Already in a clan' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: clan } = await supabase
+          .from('clans')
+          .select('id, member_count, total_energy')
+          .eq('id', clanId)
+          .single();
+
+        if (!clan) {
+          return new Response(
+            JSON.stringify({ error: 'Clan not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        await supabase
+          .from('clan_members')
+          .insert({ profile_id: profile.id, clan_id: clan.id });
+
+        await supabase
+          .from('clans')
+          .update({ member_count: clan.member_count + 1, total_energy: clan.total_energy + profile.energy })
+          .eq('id', clan.id);
+
+        await supabase
+          .from('profiles')
+          .update({ clan_id: clan.id })
+          .eq('id', profile.id);
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'leave-clan': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, clan_id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile || !profile.clan_id) {
+          return new Response(
+            JSON.stringify({ error: 'Not in a clan' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        await supabase
+          .from('clan_members')
+          .delete()
+          .eq('profile_id', profile.id)
+          .eq('clan_id', profile.clan_id);
+
+        const { data: clan } = await supabase
+          .from('clans')
+          .select('member_count, total_energy')
+          .eq('id', profile.clan_id)
+          .single();
+
+        if (clan) {
+          await supabase
+            .from('clans')
+            .update({ member_count: Math.max(0, clan.member_count - 1), total_energy: Math.max(0, clan.total_energy - profile.energy) })
+            .eq('id', profile.clan_id);
+        }
+
+        await supabase
+          .from('profiles')
+          .update({ clan_id: null })
+          .eq('id', profile.id);
+
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'clan-leaderboard': {
+        const { data: clans } = await supabase
+          .from('clans')
+          .select('id, name, member_count, total_energy')
+          .order('total_energy', { ascending: false })
+          .limit(50);
+
+        return new Response(
+          JSON.stringify({ clans: clans || [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'check-daily-combo': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const today = new Date().toISOString().split('T')[0];
+        
+        let { data: combo } = await supabase
+          .from('daily_combos')
+          .select('*')
+          .eq('date', today)
+          .maybeSingle();
+
+        // Auto-generate daily combo if none exists
+        if (!combo) {
+          const types = Object.keys(UPGRADE_CATALOG);
+          const shuffled = types.sort(() => Math.random() - 0.5);
+          const todayCombo = shuffled.slice(0, 3);
+
+          const { data: newCombo } = await supabase
+            .from('daily_combos')
+            .insert({ date: today, combo: todayCombo })
+            .select()
+            .single();
+          combo = newCombo;
+        }
+
+        if (!combo) {
+          return new Response(
+            JSON.stringify({ error: 'Failed to get combo' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if user already claimed
+        const claimedBy = (combo.claimed_by as string[]) || [];
+        const alreadyClaimed = claimedBy.includes(profile.id);
+
+        // Get user's upgrades purchased today
+        const { data: todayUpgrades } = await supabase
+          .from('upgrades')
+          .select('upgrade_type')
+          .eq('profile_id', profile.id)
+          .gte('purchased_at', `${today}T00:00:00Z`);
+
+        const purchasedTypes = (todayUpgrades || []).map(u => u.upgrade_type);
+        const comboTypes = combo.combo as string[];
+        const matched = comboTypes.filter(t => purchasedTypes.includes(t));
+        const isComplete = matched.length === 3 && !alreadyClaimed;
+
+        // Auto-claim if complete
+        if (isComplete) {
+          const { data: userProfile } = await supabase
+            .from('profiles')
+            .select('energy')
+            .eq('id', profile.id)
+            .single();
+
+          if (userProfile) {
+            await supabase
+              .from('profiles')
+              .update({ energy: userProfile.energy + 1000 })
+              .eq('id', profile.id);
+
+            await supabase
+              .from('daily_combos')
+              .update({ claimed_by: [...claimedBy, profile.id] })
+              .eq('date', today);
+          }
+        }
+
+        return new Response(
+          JSON.stringify({
+            combo: comboTypes,
+            matched,
+            isComplete,
+            alreadyClaimed,
+            reward: isComplete ? 1000 : 0,
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

@@ -1,77 +1,100 @@
 
+# 🌍 AlienFlow - Telegram Mini App
 
-## Plan: Next-Level Features — Copying What Works + Innovating
-
-After analyzing the codebase and studying patterns from top Telegram mini-apps (Hamster Kombat, Notcoin, TapSwap, Catizen), here are the highest-impact features to implement next:
+## Visión General
+Una experiencia de minería de Energía Punto Cero con estética **Greenpunk/Solarpunk**. El usuario es un "Alien" que extrae energía del núcleo de la Tierra a través de un Toroide gravitatorio.
 
 ---
 
-### 1. Upgrade Cards System (Hamster Kombat pattern)
-The #1 retention mechanic in top apps. Users spend energy to buy permanent upgrades that increase passive and active earnings.
+## 🎨 Diseño Visual
+- **Paleta**: Fondo #000 (negro profundo), Verde Neón #39FF14, Oro Tesla #D4AF37
+- **Estilo**: Cinematográfico, futurista, con brillos, halos y partículas flotantes
+- **Tipografía**: Sans-serif futurista con efectos de brillo neón
 
-**New DB table: `upgrades`**
-| Column | Type |
-|---|---|
-| id | uuid PK |
-| profile_id | uuid FK |
-| upgrade_type | text (tap_power, passive_income, max_stamina, regen_speed) |
-| level | integer default 1 |
-| purchased_at | timestamp |
+---
 
-**Upgrade catalog (hardcoded server-side):**
-- **Tap Power** — increases energy per tap (1→2→3→5→8). Costs: 100, 500, 2000, 8000, 25000 energy
-- **Passive Income** — earns energy/hour even offline (0→5→15→30→60/h). Costs: 200, 1000, 5000, 15000, 40000
-- **Max Stamina** — increases cap (100→200→500→1000→2000). Costs: 150, 800, 3000, 10000, 30000
-- **Regen Speed** — faster stamina recovery (1/min→2→3→5→8/min). Costs: 300, 1200, 4000, 12000, 35000
+## 📱 Pantallas
 
-**UI:** New "Upgrades" tab in Navigation with card-style layout showing current level, cost, and effect preview.
+### 1. PLANETA (Pantalla Principal)
+- **Tierra 3D** central rotando con Three.js (texturas realistas, nubes, atmósfera brillante)
+- **6 slots hexagonales** orbitando alrededor:
+  - Slot 1: "Core Mina" — Estilo Solarpunk con animación de actividad
+  - Slots 2-6: Bloqueados con candado dorado animado
+- **Tutorial inicial**: Overlay Greenpunk con pasos guiados y tooltips animados
 
-### 2. Passive/Offline Income
-When user returns, calculate hours away × passive income rate and show a "Welcome back! You earned X energy while away" modal. This is THE hook that brings users back daily beyond the daily reward.
+### 2. MINA
+- **Toroide central** con animaciones 2D premium en Framer Motion:
+  - Flujo gravitatorio continuo con partículas verde neón
+  - Pulso magnético al ritmo del tap
+  - Ondas expansivas al extraer energía
+- **Interacción**: Tap = +1 Energía, -1 Stamina, vibración visual y efecto de sonido
+- **Indicadores**: Contador de Energía y barra de Stamina visibles
 
-**Edge function change:** `init-profile` calculates offline earnings on login based on `passive_income_level` and `last_seen_at` timestamp.
+### 3. RED (Conexiones Sociales)
+- **Botón "Conectar Wallet TON"** prominente (funcionalidad preparada para futuro)
+- **Sección Misiones** (+50 Energía cada una):
+  - Facebook, Instagram, LinkedIn, Telegram, X (Twitter) — Orden alfabético
+  - Flujo: Clic → Abre enlace → Al volver, "Verificando..." (33s) → "Reclamar Recompensa"
+- **Sección Ecosistema** (orden alfabético):
+  - AlienFlow DAO, Discord (Coming Soon), Email, GitBook, GitHub, LinkedIn Personal, Reddit, Threads, TikTok (Coming Soon)
+- **Sección Legado**: 2 colecciones de OpenSea NFTs
 
-### 3. Daily Combo / Secret Code
-Each day, a 3-card combination is "correct." Users who find it get a massive bonus (1000 energy). Creates daily buzz and social sharing.
+---
 
-**New DB table: `daily_combos`**
-- `date` (date PK), `combo` (text[] — 3 upgrade types), `claimed_by` (jsonb array of profile IDs)
+## ⚙️ Mecánicas de Juego
 
-**UI:** A "Daily Combo" section in PlanetScreen showing 3 mystery slots. When user buys the right 3 upgrades that day, combo unlocks.
+### Stamina
+- Máximo: 100 puntos
+- Recarga: +1 cada 60 segundos automáticamente
+- Persistencia en Supabase (sincronizado entre dispositivos)
 
-### 4. Clan/Squad System
-Groups of players compete together. Top clans get weekly rewards. Drives viral growth.
+### Energía Punto Cero
+- Contador acumulativo sin límite
+- Se gana: +1 por tap en Toroide, +50 por misión completada
+- Sincronizado en la nube via Supabase
 
-**New DB tables:**
-- `clans`: id, name, created_by, member_count, total_energy
-- `clan_members`: profile_id, clan_id, role (leader/member), joined_at
+### Verificación de Misiones
+- Sistema de "Verificación con Retraso Simulado"
+- Contador de 33 segundos post-visita antes de poder reclamar
+- Estado guardado en Supabase para evitar repetición
 
-**UI:** New section in NetworkScreen to create/join clans, see clan leaderboard.
+---
 
-### 5. Airdrop / Token Pre-Launch Page
-Every top mini-app has an "Airdrop" tab showing users their future token allocation based on energy mined. Creates FOMO and retention.
+## 🎵 Audio Inmersivo
+- **Música ambiental** Solarpunk/electrónica orgánica (loop continuo, toggleable)
+- **Efectos de sonido**:
+  - Tap en Toroide: pulso energético
+  - Misión completada: tono de logro
+  - Navegación: transiciones suaves
+  - Tutorial: notificaciones sutiles
 
-**UI only (no backend needed yet):**
-- New "Airdrop" screen showing: total energy mined, estimated $ALIEN allocation, countdown to TGE
-- Tier badges: Bronze (0-1k), Silver (1k-10k), Gold (10k-100k), Diamond (100k+)
-- "Tasks to boost allocation" linking to missions
+---
 
-### Files Modified
-1. **DB migration** — `upgrades` table, `daily_combos` table, `clans` + `clan_members` tables, add `passive_income_level`, `tap_power_level`, `last_seen_at` to profiles
-2. **`supabase/functions/game-api/index.ts`** — new endpoints: `buy-upgrade`, `get-upgrades`, `check-daily-combo`, `create-clan`, `join-clan`, `clan-leaderboard`; update `init-profile` for offline earnings
-3. **`src/screens/UpgradesScreen.tsx`** — NEW: card-based upgrade shop
-4. **`src/screens/AirdropScreen.tsx`** — NEW: airdrop allocation preview
-5. **`src/screens/PlanetScreen.tsx`** — offline earnings modal, daily combo section
-6. **`src/screens/NetworkScreen.tsx`** — clan section
-7. **`src/components/game/Navigation.tsx`** — add Upgrades + Airdrop tabs (5 tabs total)
-8. **`src/hooks/useGameState.ts`** — new state for upgrades, clans, offline earnings
-9. **`src/pages/Index.tsx`** — wire new screens
+## 🔧 Integraciones Técnicas
 
-### Implementation Order
-1. DB migration (all tables at once)
-2. Upgrade cards system (biggest retention impact)
-3. Passive/offline income
-4. Airdrop page (no backend, pure motivation)
-5. Clan system
-6. Daily combo
+### Telegram Mini App
+- SDK oficial de Telegram WebApp
+- `window.Telegram.WebApp.expand()` para pantalla completa
+- Todos los enlaces abren en ventana nueva
 
+### Backend (Supabase)
+- **Tablas**: usuarios, stamina, energía, misiones_completadas
+- **Autenticación**: Via Telegram user_id
+- **Sincronización**: Tiempo real para progreso entre dispositivos
+- **Edge Functions**: Para audio (ElevenLabs) y validaciones
+
+### Tecnologías Frontend
+- React + TypeScript + Vite
+- Three.js + @react-three/fiber (Tierra 3D)
+- Framer Motion (Toroide y animaciones UI)
+- Tailwind CSS (estilos Greenpunk)
+
+---
+
+## 📋 Sistema de Tutorial
+
+1. **Paso 1**: "Bienvenido Alien. Este es el Planeta Tierra Nivel 0."
+2. **Paso 2**: "Pulsa en la Core Mina para entrar al núcleo de energía."
+3. **Paso 3**: "En la Mina, pulsa el Toroide para extraer Energía Punto Cero."
+
+Cada paso con overlay oscuro, spotlight en el elemento relevante, y animación de siguiente paso.
