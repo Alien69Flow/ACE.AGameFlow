@@ -1,6 +1,9 @@
 import { motion } from 'framer-motion';
+import { useState } from 'react';
+import { Copy, Send, Users, Trophy, Crown, Medal, Award, Zap } from 'lucide-react';
 import { MissionCard } from '@/components/game/MissionCard';
 import { EcosystemLink } from '@/components/game/EcosystemLink';
+import { Input } from '@/components/ui/input';
 
 interface Mission {
   id: string;
@@ -13,23 +16,36 @@ interface Mission {
   claimed: boolean;
 }
 
+interface LeaderboardEntry {
+  username: string | null;
+  energy: number;
+  referral_count: number;
+}
+
 interface NetworkScreenProps {
   missions: Mission[];
   onStartMission: (id: string) => void;
   onClaimMission: (id: string, reward: number) => void;
   openLink: (url: string) => void;
+  referralCode: string | null;
+  referralCount: number;
+  hasReferred: boolean;
+  onApplyReferral: (code: string) => Promise<{ success: boolean; error?: string }>;
+  leaderboard: LeaderboardEntry[];
+  userRank: number | null;
+  onFetchLeaderboard: () => void;
 }
 
 const ecosystemLinks = [
   { name: 'AlienFlow DAO (DApp)', icon: '🛸', url: 'https://alienflow.space' },
   { name: 'Discord', icon: '💬', comingSoon: true },
   { name: 'Email', icon: '📧', url: 'mailto:alien69flow@proton.me' },
-  { name: 'GitBook', icon: '📚', url: 'https://alienflowspace.gitbook.io/' },
+  { name: 'GitBook', icon: '📚', url: 'https://alienflowspace.gitbook.io/dao/' },
   { name: 'GitHub', icon: '💻', url: 'https://github.com/Alien69Flow' },
   { name: 'LinkedIn Personal', icon: '👤', url: 'https://linkedin.com/in/alien69flow' },
   { name: 'Reddit', icon: '🔴', url: 'https://reddit.com/user/Alien69Flow' },
   { name: 'Threads', icon: '🧵', url: 'https://threads.net/@alien69flow' },
-  { name: 'TikTok', icon: '🎵', comingSoon: true },
+  { name: 'TikTok', icon: '🎵', url: 'https://tiktok.com/@Alien69Flow' },
 ];
 
 const legacyCollections = [
@@ -37,12 +53,57 @@ const legacyCollections = [
   { name: 'Colección AlienFlowSpace', icon: '🌌', url: 'https://opensea.io/es/AlienFlowSpace' },
 ];
 
+const RANK_ICONS = [Crown, Medal, Award];
+const RANK_COLORS = ['text-secondary', 'text-muted-foreground', 'text-orange-400'];
+
 export const NetworkScreen = ({
   missions,
   onStartMission,
   onClaimMission,
   openLink,
+  referralCode,
+  referralCount,
+  hasReferred,
+  onApplyReferral,
+  leaderboard,
+  userRank,
+  onFetchLeaderboard,
 }: NetworkScreenProps) => {
+  const [refInput, setRefInput] = useState('');
+  const [refStatus, setRefStatus] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<'social' | 'leaderboard'>('social');
+
+  const handleCopy = () => {
+    if (referralCode) {
+      navigator.clipboard.writeText(referralCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleShareTelegram = () => {
+    if (referralCode) {
+      const url = `https://t.me/share/url?url=https://t.me/Alien69Bot?start=${referralCode}&text=🛸 Únete a AlienFlow y mina Energía Punto Cero!`;
+      openLink(url);
+    }
+  };
+
+  const handleApplyReferral = async () => {
+    if (!refInput || refInput.length !== 8) {
+      setRefStatus('Código inválido (8 caracteres)');
+      return;
+    }
+    const result = await onApplyReferral(refInput);
+    if (result.success) {
+      setRefStatus('✅ +50 Energía recibida!');
+      setRefInput('');
+    } else {
+      setRefStatus(`❌ ${result.error}`);
+    }
+    setTimeout(() => setRefStatus(null), 3000);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -51,79 +112,245 @@ export const NetworkScreen = ({
       className="flex-1 overflow-y-auto pb-24 pt-2"
     >
       <div className="px-4 space-y-5">
-        {/* Missions Section */}
-        <section>
-          <motion.h2
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            className="font-display text-base font-bold text-primary text-glow mb-2"
-          >
-            MISIONES
-          </motion.h2>
-          <div className="space-y-2">
-            {missions.map((mission, index) => (
-              <motion.div
-                key={mission.id}
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: index * 0.05 }}
-              >
-                <MissionCard
-                  {...mission}
-                  onStart={() => onStartMission(mission.id)}
-                  onClaim={() => onClaimMission(mission.id, mission.reward)}
-                  openLink={openLink}
-                />
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* Ecosystem Section */}
-        <section>
-          <motion.h2
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            className="font-display text-base font-bold text-primary text-glow mb-2"
-          >
-            ECOSISTEMA
-          </motion.h2>
-          <div className="space-y-1.5">
-            {ecosystemLinks.map((link, index) => (
-              <motion.div
-                key={link.name}
-                initial={{ x: -20, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <EcosystemLink {...link} openLink={openLink} />
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* Legacy Section */}
+        {/* Referral Section */}
         <section>
           <motion.h2
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             className="font-display text-base font-bold text-secondary text-glow-gold mb-2"
           >
-            LEGADO (OpenSea NFTs)
+            🛸 SISTEMA DE REFERIDOS
           </motion.h2>
-          <div className="space-y-1.5">
-            {legacyCollections.map((link, index) => (
-              <motion.div
-                key={link.name}
+          <motion.div
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="bg-card/80 border border-secondary/30 rounded-xl p-4 space-y-3"
+          >
+            {/* My code */}
+            <div>
+              <span className="font-body text-xs text-muted-foreground">Tu código:</span>
+              <div className="flex items-center gap-2 mt-1">
+                <div className="flex-1 bg-muted rounded-lg px-3 py-2 font-display text-sm text-secondary text-glow-gold tracking-widest text-center">
+                  {referralCode || '...'}
+                </div>
+                <motion.button
+                  onClick={handleCopy}
+                  whileTap={{ scale: 0.9 }}
+                  className="p-2 rounded-lg border border-secondary/30 hover:bg-secondary/10 transition-colors"
+                >
+                  <Copy className="w-4 h-4 text-secondary" />
+                </motion.button>
+                <motion.button
+                  onClick={handleShareTelegram}
+                  whileTap={{ scale: 0.9 }}
+                  className="p-2 rounded-lg border border-primary/30 hover:bg-primary/10 transition-colors"
+                >
+                  <Send className="w-4 h-4 text-primary" />
+                </motion.button>
+              </div>
+              {copied && <span className="text-[10px] text-secondary mt-1 block">¡Copiado!</span>}
+            </div>
+
+            {/* Stats */}
+            <div className="flex items-center justify-around py-2 border-t border-secondary/10">
+              <div className="text-center">
+                <Users className="w-4 h-4 text-secondary mx-auto mb-0.5" />
+                <span className="font-display text-lg font-bold text-secondary text-glow-gold">{referralCount}</span>
+                <span className="font-body text-[10px] text-muted-foreground block">Referidos</span>
+              </div>
+              <div className="text-center">
+                <Zap className="w-4 h-4 text-secondary mx-auto mb-0.5" />
+                <span className="font-display text-lg font-bold text-secondary text-glow-gold">{referralCount * 100}</span>
+                <span className="font-body text-[10px] text-muted-foreground block">Energía ganada</span>
+              </div>
+            </div>
+
+            {/* Apply referral */}
+            {!hasReferred && (
+              <div className="border-t border-secondary/10 pt-3">
+                <span className="font-body text-xs text-muted-foreground">¿Tienes un código de invitación?</span>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    value={refInput}
+                    onChange={(e) => setRefInput(e.target.value.toUpperCase())}
+                    placeholder="XXXXXXXX"
+                    maxLength={8}
+                    className="flex-1 font-display text-sm tracking-widest text-center bg-muted border-secondary/20"
+                  />
+                  <motion.button
+                    onClick={handleApplyReferral}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-4 py-2 rounded-lg bg-secondary/20 border border-secondary/40 font-display text-xs text-secondary hover:bg-secondary/30 transition-colors"
+                  >
+                    APLICAR
+                  </motion.button>
+                </div>
+                {refStatus && (
+                  <span className="font-body text-[10px] text-muted-foreground mt-1 block">{refStatus}</span>
+                )}
+              </div>
+            )}
+          </motion.div>
+        </section>
+
+        {/* Tab selector */}
+        <div className="flex gap-2">
+          <motion.button
+            onClick={() => setActiveTab('social')}
+            className={`flex-1 py-2 rounded-lg font-display text-xs transition-colors ${
+              activeTab === 'social' ? 'bg-primary/20 text-primary border border-primary/40' : 'bg-card/50 text-muted-foreground border border-muted/20'
+            }`}
+            whileTap={{ scale: 0.97 }}
+          >
+            MISIONES & RED
+          </motion.button>
+          <motion.button
+            onClick={() => { setActiveTab('leaderboard'); onFetchLeaderboard(); }}
+            className={`flex-1 py-2 rounded-lg font-display text-xs transition-colors ${
+              activeTab === 'leaderboard' ? 'bg-secondary/20 text-secondary border border-secondary/40' : 'bg-card/50 text-muted-foreground border border-muted/20'
+            }`}
+            whileTap={{ scale: 0.97 }}
+          >
+            <Trophy className="w-3 h-3 inline mr-1" />
+            RANKING
+          </motion.button>
+        </div>
+
+        {activeTab === 'social' ? (
+          <>
+            {/* Missions Section */}
+            <section>
+              <motion.h2
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
-                transition={{ delay: index * 0.05 }}
+                className="font-display text-base font-bold text-primary text-glow mb-2"
               >
-                <EcosystemLink {...link} openLink={openLink} />
+                MISIONES
+              </motion.h2>
+              <div className="space-y-2">
+                {missions.map((mission, index) => (
+                  <motion.div
+                    key={mission.id}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <MissionCard
+                      {...mission}
+                      onStart={() => onStartMission(mission.id)}
+                      onClaim={() => onClaimMission(mission.id, mission.reward)}
+                      openLink={openLink}
+                    />
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+
+            {/* Ecosystem Section */}
+            <section>
+              <motion.h2
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="font-display text-base font-bold text-primary text-glow mb-2"
+              >
+                ECOSISTEMA
+              </motion.h2>
+              <div className="space-y-1.5">
+                {ecosystemLinks.map((link, index) => (
+                  <motion.div
+                    key={link.name}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: index * 0.03 }}
+                  >
+                    <EcosystemLink {...link} openLink={openLink} />
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+
+            {/* Legacy Section */}
+            <section>
+              <motion.h2
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                className="font-display text-base font-bold text-secondary text-glow-gold mb-2"
+              >
+                LEGADO (OpenSea NFTs)
+              </motion.h2>
+              <div className="space-y-1.5">
+                {legacyCollections.map((link, index) => (
+                  <motion.div
+                    key={link.name}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
+                    <EcosystemLink {...link} openLink={openLink} />
+                  </motion.div>
+                ))}
+              </div>
+            </section>
+          </>
+        ) : (
+          /* Leaderboard */
+          <section>
+            {userRank && (
+              <motion.div
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="bg-card/80 border border-secondary/30 rounded-xl p-3 mb-3 flex items-center justify-between"
+              >
+                <span className="font-body text-xs text-muted-foreground">Tu posición</span>
+                <span className="font-display text-lg font-bold text-secondary text-glow-gold">#{userRank}</span>
               </motion.div>
-            ))}
-          </div>
-        </section>
+            )}
+            <div className="space-y-1.5">
+              {leaderboard.map((entry, index) => {
+                const RankIcon = index < 3 ? RANK_ICONS[index] : null;
+                const rankColor = index < 3 ? RANK_COLORS[index] : 'text-muted-foreground';
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: index * 0.03 }}
+                    className={`flex items-center gap-3 p-2.5 rounded-lg border ${
+                      index < 3 ? 'bg-card/90 border-secondary/30' : 'bg-card/50 border-muted/10'
+                    }`}
+                  >
+                    <div className="w-8 text-center">
+                      {RankIcon ? (
+                        <RankIcon className={`w-5 h-5 mx-auto ${rankColor}`} />
+                      ) : (
+                        <span className="font-display text-xs text-muted-foreground">{index + 1}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-display text-xs text-foreground truncate block">
+                        {entry.username || 'Anonymous'}
+                      </span>
+                      {entry.referral_count > 0 && (
+                        <span className="font-body text-[9px] text-muted-foreground">
+                          {entry.referral_count} referidos
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-secondary" />
+                      <span className="font-display text-sm font-bold text-secondary text-glow-gold">
+                        {entry.energy.toLocaleString()}
+                      </span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+              {leaderboard.length === 0 && (
+                <p className="text-center text-muted-foreground text-xs py-8">Cargando ranking...</p>
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </motion.div>
   );

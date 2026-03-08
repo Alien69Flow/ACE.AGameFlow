@@ -1,14 +1,17 @@
 import { motion } from 'framer-motion';
-import { Battery, Zap } from 'lucide-react';
+import { Battery, Zap, Star } from 'lucide-react';
 
 interface StaminaBarProps {
   stamina: number;
   maxStamina: number;
   energy: number;
+  multiplier?: number;
+  multiplierExpiresAt?: string | null;
 }
 
-export const StaminaBar = ({ stamina, maxStamina, energy }: StaminaBarProps) => {
+export const StaminaBar = ({ stamina, maxStamina, energy, multiplier = 1, multiplierExpiresAt }: StaminaBarProps) => {
   const staminaPercent = (stamina / maxStamina) * 100;
+  const isMultiplierActive = multiplier > 1 && multiplierExpiresAt && new Date(multiplierExpiresAt) > new Date();
 
   return (
     <div className="fixed top-4 left-4 right-4 z-50">
@@ -20,6 +23,16 @@ export const StaminaBar = ({ stamina, maxStamina, energy }: StaminaBarProps) => 
             <span className="font-display text-xs text-primary text-glow">
               STAMINA
             </span>
+            {isMultiplierActive && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-secondary/20 border border-secondary/40"
+              >
+                <Star className="w-3 h-3 text-secondary" />
+                <span className="font-display text-[9px] text-secondary font-bold">{multiplier}×</span>
+              </motion.span>
+            )}
           </div>
           <div className="h-3 bg-muted rounded-full overflow-hidden border border-primary/30">
             <motion.div
