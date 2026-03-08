@@ -42,6 +42,26 @@ interface LeaderboardEntry {
   referral_count: number;
 }
 
+interface AchievementInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  reward: number;
+  unlocked: boolean;
+  unlockedAt: string | null;
+  claimed: boolean;
+  progress: number;
+  target: number;
+}
+
+interface NewAchievement {
+  id: string;
+  name: string;
+  icon: string;
+  reward: number;
+}
+
 interface ClanInfo {
   id: string;
   name: string;
