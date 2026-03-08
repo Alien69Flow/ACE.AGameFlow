@@ -382,8 +382,10 @@ export const useGameState = () => {
         }));
         return true;
       }
+      toast.error('❌ No se pudo activar el multiplicador');
       return false;
     } catch {
+      toast.error('❌ Error al activar multiplicador');
       return false;
     }
   }, [initData]);
