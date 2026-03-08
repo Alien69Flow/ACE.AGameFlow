@@ -245,7 +245,7 @@ Deno.serve(async (req) => {
       case 'tap': {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, energy, stamina, multiplier, multiplier_expires_at, tap_power_level')
+          .select('id, energy, stamina, multiplier, multiplier_expires_at, tap_power_level, last_tap_at')
           .eq('telegram_id', telegramUserId)
           .single();
         
@@ -253,6 +253,19 @@ Deno.serve(async (req) => {
           return new Response(
             JSON.stringify({ error: 'Profile not found' }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Anti-cheat: Rate limiting
+        const now = Date.now();
+        const lastTapTime = profile.last_tap_at ? new Date(profile.last_tap_at).getTime() : 0;
+        const timeSinceLastTap = now - lastTapTime;
+        
+        // Block taps faster than 100ms (bot detection)
+        if (timeSinceLastTap < 100) {
+          return new Response(
+            JSON.stringify({ error: 'Rate limited', success: false }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
         
@@ -288,7 +301,8 @@ Deno.serve(async (req) => {
           .update({ 
             energy: newEnergy, 
             stamina: newStamina, 
-            last_stamina_update: new Date().toISOString() 
+            last_stamina_update: new Date().toISOString(),
+            last_tap_at: new Date().toISOString()
           })
           .eq('id', profile.id)
           .eq('stamina', profile.stamina)
