@@ -255,6 +255,7 @@ const Index = () => {
             missions={missions}
             onStartMission={handleStartMission}
             onClaimMission={handleClaimMission}
+            onVerifyMission={verifyMission}
             openLink={openLink}
             referralCode={gameState.referralCode}
             referralCount={gameState.referralCount}
