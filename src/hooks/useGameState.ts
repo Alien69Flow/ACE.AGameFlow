@@ -225,7 +225,13 @@ export const useGameState = () => {
     };
   }, [gameState.profileId, gameState.stamina, gameState.maxStamina, initData]);
 
+  const lastTapTimeRef = useRef(0);
+
   const tapToroid = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastTapTimeRef.current < 150) return false; // 150ms cooldown
+    lastTapTimeRef.current = now;
+
     if (gameState.stamina <= 0 || !gameState.profileId || !initData || isMiningRef.current) return false;
 
     isMiningRef.current = true;
