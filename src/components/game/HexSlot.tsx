@@ -11,7 +11,7 @@ interface HexSlotProps {
 
 export const HexSlot = ({ index, isUnlocked, name, onClick, isHighlighted }: HexSlotProps) => {
   const angle = (index * 60 - 90) * (Math.PI / 180);
-  const radius = 140;
+  const radius = 110;
   const x = Math.cos(angle) * radius;
   const y = Math.sin(angle) * radius;
 
@@ -31,7 +31,7 @@ export const HexSlot = ({ index, isUnlocked, name, onClick, isHighlighted }: Hex
         onClick={isUnlocked ? onClick : undefined}
         disabled={!isUnlocked}
         className={`
-          relative w-16 h-16 flex items-center justify-center
+          relative w-[72px] h-[72px] flex items-center justify-center
           transition-all duration-300
           ${isUnlocked 
             ? 'cursor-pointer hover:scale-110' 
@@ -45,18 +45,18 @@ export const HexSlot = ({ index, isUnlocked, name, onClick, isHighlighted }: Hex
         {/* Hexagon shape */}
         <svg
           viewBox="0 0 100 100"
-          className={`absolute inset-0 w-full h-full ${isUnlocked ? 'animate-pulse-neon' : ''}`}
+          className={`absolute inset-0 w-full h-full ${isUnlocked ? 'animate-pulse-glow' : ''}`}
         >
           <polygon
             points="50,3 97,25 97,75 50,97 3,75 3,25"
             className={`
-              stroke-2 fill-card
+              fill-card
               ${isUnlocked 
                 ? 'stroke-primary' 
                 : 'stroke-secondary'
               }
             `}
-            strokeWidth="3"
+            strokeWidth="2"
           />
           {/* Inner glow for unlocked */}
           {isUnlocked && (
@@ -77,14 +77,14 @@ export const HexSlot = ({ index, isUnlocked, name, onClick, isHighlighted }: Hex
               </span>
             </>
           ) : (
-            <Lock className="w-5 h-5 text-secondary text-glow-gold" />
+            <Lock className="w-4 h-4 text-secondary text-glow-gold" />
           )}
         </div>
 
         {/* Highlight ring for tutorial */}
         {isHighlighted && (
           <motion.div
-            className="absolute -inset-4 rounded-full border-2 border-primary"
+            className="absolute -inset-3 rounded-full border-2 border-primary"
             animate={{
               scale: [1, 1.2, 1],
               opacity: [1, 0.5, 1],
