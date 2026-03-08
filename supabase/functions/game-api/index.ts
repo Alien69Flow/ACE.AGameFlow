@@ -1467,6 +1467,141 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'get-achievements': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy, referral_count, daily_streak, clan_id, total_spins, tap_power_level, passive_income_level, max_stamina_level, regen_speed_level')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: userAchievements } = await supabase
+          .from('achievements')
+          .select('achievement_id, unlocked_at, claimed')
+          .eq('profile_id', profile.id);
+
+        const userAchMap = new Map((userAchievements || []).map((a: { achievement_id: string; unlocked_at: string; claimed: boolean }) => [a.achievement_id, a]));
+
+        const { count: missionsCount } = await supabase
+          .from('missions_completed')
+          .select('id', { count: 'exact', head: true })
+          .eq('profile_id', profile.id)
+          .eq('claimed', true);
+
+        const progressMap: Record<string, { current: number; target: number }> = {
+          first_tap: { current: Math.min(profile.energy > 0 ? 1 : 0, 1), target: 1 },
+          energy_1k: { current: Math.min(profile.energy, 1000), target: 1000 },
+          energy_10k: { current: Math.min(profile.energy, 10000), target: 10000 },
+          energy_100k: { current: Math.min(profile.energy, 100000), target: 100000 },
+          first_referral: { current: Math.min(profile.referral_count, 1), target: 1 },
+          referrals_5: { current: Math.min(profile.referral_count, 5), target: 5 },
+          referrals_25: { current: Math.min(profile.referral_count, 25), target: 25 },
+          streak_7: { current: Math.min(profile.daily_streak, 7), target: 7 },
+          streak_30: { current: Math.min(profile.daily_streak, 30), target: 30 },
+          max_upgrade: { current: Math.min(Math.max(profile.tap_power_level, profile.passive_income_level, profile.max_stamina_level, profile.regen_speed_level), 5), target: 5 },
+          join_clan: { current: profile.clan_id ? 1 : 0, target: 1 },
+          spin_10: { current: Math.min(profile.total_spins || 0, 10), target: 10 },
+          all_missions: { current: Math.min(missionsCount || 0, TOTAL_MISSIONS_COUNT), target: TOTAL_MISSIONS_COUNT },
+        };
+
+        const achievements = ACHIEVEMENT_CATALOG.map(a => {
+          const ua = userAchMap.get(a.id) as { unlocked_at: string; claimed: boolean } | undefined;
+          const progress = progressMap[a.id] || { current: 0, target: 1 };
+          return {
+            ...a,
+            unlocked: !!ua,
+            unlockedAt: ua?.unlocked_at || null,
+            claimed: ua?.claimed || false,
+            progress: progress.current,
+            target: progress.target,
+          };
+        });
+
+        const unlockedCount = achievements.filter(a => a.unlocked).length;
+
+        return new Response(
+          JSON.stringify({ achievements, unlockedCount, totalCount: ACHIEVEMENT_CATALOG.length }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'claim-achievement': {
+        const body = await req.json();
+        const { achievementId } = body;
+
+        if (!achievementId || typeof achievementId !== 'string') {
+          return new Response(
+            JSON.stringify({ error: 'Invalid achievement ID' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const catalogEntry = ACHIEVEMENT_CATALOG.find(a => a.id === achievementId);
+        if (!catalogEntry) {
+          return new Response(
+            JSON.stringify({ error: 'Unknown achievement' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: achievement } = await supabase
+          .from('achievements')
+          .select('id, claimed')
+          .eq('profile_id', profile.id)
+          .eq('achievement_id', achievementId)
+          .single();
+
+        if (!achievement) {
+          return new Response(
+            JSON.stringify({ error: 'Achievement not unlocked' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (achievement.claimed) {
+          return new Response(
+            JSON.stringify({ error: 'Already claimed' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const newEnergy = profile.energy + catalogEntry.reward;
+
+        await supabase
+          .from('achievements')
+          .update({ claimed: true })
+          .eq('id', achievement.id);
+
+        await supabase
+          .from('profiles')
+          .update({ energy: newEnergy })
+          .eq('id', profile.id);
+
+        return new Response(
+          JSON.stringify({ success: true, energy: newEnergy, reward: catalogEntry.reward }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'verify-payment': {
         // TON payment verification endpoint
         // Requires TON Center API to verify transaction
