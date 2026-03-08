@@ -4,6 +4,7 @@ import { Toroid } from '@/components/game/Toroid';
 import { getTutorialHighlight } from '@/components/game/Tutorial';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { ENERGY_PACKS, MULTIPLIER_PACKS, DAO_WALLET_ADDRESS, toNano } from '@/lib/payments';
+import { toast } from 'sonner';
 
 interface MineScreenProps {
   onTap: () => Promise<boolean>;
@@ -13,15 +14,16 @@ interface MineScreenProps {
   multiplier: number;
   multiplierExpiresAt: string | null;
   onActivateMultiplier: () => Promise<boolean>;
+  onApplyEnergyPack?: (packId: string) => Promise<boolean>;
 }
 
-export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, multiplierExpiresAt, onActivateMultiplier }: MineScreenProps) => {
+export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, multiplierExpiresAt, onActivateMultiplier, onApplyEnergyPack }: MineScreenProps) => {
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [tonConnectUI] = useTonConnectUI();
 
   const isMultiplierActive = multiplier > 1 && multiplierExpiresAt && new Date(multiplierExpiresAt) > new Date();
 
-  const handleBuyPack = async (priceTon: string) => {
+  const handleBuyPack = async (packId: string, priceTon: string) => {
     try {
       await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
@@ -32,8 +34,19 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
           },
         ],
       });
+      if (onApplyEnergyPack) {
+        const ok = await onApplyEnergyPack(packId);
+        if (ok) {
+          toast.success('⚡ ¡Energía inyectada con éxito!');
+        } else {
+          toast.error('❌ Pago enviado pero no se pudo aplicar. Contacta soporte.');
+        }
+      } else {
+        toast.success('⚡ ¡Transacción enviada!');
+      }
     } catch (e) {
       console.error('Transaction failed:', e);
+      toast.error('❌ Transacción cancelada o fallida');
     }
   };
 
@@ -48,10 +61,15 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
           },
         ],
       });
-      // Activate on server after payment
-      await onActivateMultiplier();
+      const ok = await onActivateMultiplier();
+      if (ok) {
+        toast.success('🚀 ¡Boost activado! 2× durante 24h');
+      } else {
+        toast.error('❌ Pago enviado pero no se pudo activar el boost.');
+      }
     } catch (e) {
       console.error('Transaction failed:', e);
+      toast.error('❌ Transacción cancelada o fallida');
     }
   };
 

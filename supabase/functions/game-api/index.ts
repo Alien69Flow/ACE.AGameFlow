@@ -1605,10 +1605,54 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'apply-energy-pack': {
+        const body = await req.json();
+        const { packId } = body;
+
+        // Valid pack IDs and their stamina gains
+        const ENERGY_PACK_MAP: Record<string, number> = {
+          flux_starter: 1000,
+          tesla_burst: 5000,
+          void_core: 20000,
+          quantum_surge: 50000,
+          singularity: 100000,
+        };
+
+        const staminaGain = ENERGY_PACK_MAP[packId];
+        if (!staminaGain) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid pack ID' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, stamina, max_stamina')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const newStamina = profile.stamina + staminaGain;
+
+        await supabase
+          .from('profiles')
+          .update({ stamina: newStamina, last_stamina_update: new Date().toISOString() })
+          .eq('id', profile.id);
+
+        return new Response(
+          JSON.stringify({ success: true, stamina: newStamina, staminaGain }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'verify-payment': {
-        // TON payment verification endpoint
-        // Requires TON Center API to verify transaction
-        // For now, return not implemented
         return new Response(
           JSON.stringify({ error: 'Payment verification not yet configured' }),
           { status: 501, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
