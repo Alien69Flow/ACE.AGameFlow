@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Earth3D } from '@/components/game/Earth3D';
 import { HexSlot } from '@/components/game/HexSlot';
 import { getTutorialHighlight } from '@/components/game/Tutorial';
-import { Gift, Zap, Flame } from 'lucide-react';
+import { LuckyWheel } from '@/components/game/LuckyWheel';
+import { Gift, Zap, Flame, Sparkles } from 'lucide-react';
 
 interface PlanetScreenProps {
   onEnterMine: () => void;
@@ -11,6 +12,8 @@ interface PlanetScreenProps {
   dailyRewardAvailable: boolean;
   dailyStreak: number;
   onClaimDaily: () => Promise<{ reward: number; streak: number } | null>;
+  onSpinWheel: () => Promise<{ prize: { type: string; value: number; label: string } | null; canSpinFree: boolean; error?: string }>;
+  canSpinFree: boolean;
 }
 
 const slots = [
@@ -22,11 +25,12 @@ const slots = [
   { id: 6, name: 'Slot 6', isUnlocked: false },
 ];
 
-export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily }: PlanetScreenProps) => {
+export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily, onSpinWheel, canSpinFree }: PlanetScreenProps) => {
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [showDailyModal, setShowDailyModal] = useState(dailyRewardAvailable);
   const [claimResult, setClaimResult] = useState<{ reward: number; streak: number } | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [showWheel, setShowWheel] = useState(false);
 
   const handleClaim = async () => {
     setClaiming(true);
