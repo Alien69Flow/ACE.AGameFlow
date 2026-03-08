@@ -57,7 +57,6 @@ const MISSIONS = [
   { id: 'facebook', name: 'Facebook', url: 'https://www.facebook.com/Alien69Flow', icon: '📘', reward: 50, verifiable: false, verifyType: null },
   { id: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/alien69flow/', icon: '📸', reward: 50, verifiable: false, verifyType: null },
   { id: 'linkedin', name: 'LinkedIn', url: 'https://linkedin.com/company/alienflowspace', icon: '💼', reward: 50, verifiable: false, verifyType: null },
-  { id: 'twitter', name: 'X (Twitter)', url: 'https://x.com/alien69flow', icon: '🐦', reward: 50, verifiable: false, verifyType: null },
 ];
 
 const Index = () => {

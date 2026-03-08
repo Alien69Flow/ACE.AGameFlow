@@ -137,7 +137,7 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
           {ENERGY_PACKS.map((pack) => (
             <motion.button
               key={pack.id}
-              onClick={() => handleBuyPack(pack.priceTon)}
+              onClick={() => handleBuyPack(pack.id, pack.priceTon)}
               className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all duration-200
                 ${pack.featured 
                   ? 'border-secondary/60 bg-secondary/5 hover:bg-secondary/10 relative' 
