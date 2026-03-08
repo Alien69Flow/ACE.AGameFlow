@@ -248,9 +248,10 @@ export const NetworkScreen = ({
         </section>
 
         {/* Tab selector */}
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap">
           {[
             { id: 'social' as const, label: 'MISIONES' },
+            { id: 'achievements' as const, label: 'LOGROS', onClick: onFetchAchievements },
             { id: 'friends' as const, label: 'AMIGOS', onClick: onFetchFriends },
             { id: 'leaderboard' as const, label: 'RANKING', onClick: onFetchLeaderboard },
             { id: 'clans' as const, label: 'CLANES', onClick: onFetchClanLeaderboard },
