@@ -12,7 +12,7 @@ import { MineScreen } from '@/screens/MineScreen';
 import { NetworkScreen } from '@/screens/NetworkScreen';
 import { UpgradesScreen } from '@/screens/UpgradesScreen';
 import { AirdropScreen } from '@/screens/AirdropScreen';
-import { Zap } from 'lucide-react';
+import { Zap, Trophy } from 'lucide-react';
 
 type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop';
 
@@ -61,6 +61,12 @@ const Index = () => {
     canSpinFree,
     friends,
     fetchFriends,
+    achievements,
+    achievementCounts,
+    fetchAchievements,
+    claimAchievement,
+    newAchievementQueue,
+    dismissAchievementNotification,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
@@ -175,6 +181,7 @@ const Index = () => {
         energy={gameState.energy}
         multiplier={gameState.multiplier}
         multiplierExpiresAt={gameState.multiplierExpiresAt}
+        achievementCounts={achievementCounts}
       />
 
       {/* Offline Earnings Modal */}
@@ -216,6 +223,34 @@ const Index = () => {
               >
                 ¡GENIAL!
               </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Achievement Toast */}
+      <AnimatePresence>
+        {newAchievementQueue.length > 0 && (
+          <motion.div
+            key={newAchievementQueue[0].id}
+            initial={{ y: -80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -80, opacity: 0 }}
+            className="fixed top-20 left-4 right-4 z-[70]"
+          >
+            <motion.div
+              className="bg-card border border-secondary/50 rounded-xl p-3 box-glow-gold flex items-center gap-3 cursor-pointer"
+              onClick={dismissAchievementNotification}
+            >
+              <span className="text-2xl">{newAchievementQueue[0].icon}</span>
+              <div className="flex-1">
+                <span className="font-display text-xs text-secondary block">🏆 LOGRO DESBLOQUEADO</span>
+                <span className="font-display text-sm font-bold text-foreground">{newAchievementQueue[0].name}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Trophy className="w-4 h-4 text-secondary" />
+                <span className="font-display text-xs text-secondary">+{newAchievementQueue[0].reward}</span>
+              </div>
             </motion.div>
           </motion.div>
         )}
@@ -279,6 +314,9 @@ const Index = () => {
             onFetchClanLeaderboard={fetchClanLeaderboard}
             friends={friends}
             onFetchFriends={fetchFriends}
+            achievements={achievements}
+            onFetchAchievements={fetchAchievements}
+            onClaimAchievement={claimAchievement}
           />
         )}
         {currentScreen === 'airdrop' && (

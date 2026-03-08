@@ -42,6 +42,26 @@ interface LeaderboardEntry {
   referral_count: number;
 }
 
+interface AchievementInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  reward: number;
+  unlocked: boolean;
+  unlockedAt: string | null;
+  claimed: boolean;
+  progress: number;
+  target: number;
+}
+
+interface NewAchievement {
+  id: string;
+  name: string;
+  icon: string;
+  reward: number;
+}
+
 interface ClanInfo {
   id: string;
   name: string;
@@ -470,6 +490,46 @@ export const useGameState = () => {
     }
   }, [initData]);
 
+  // Achievements
+  const [achievements, setAchievements] = useState<AchievementInfo[]>([]);
+  const [achievementCounts, setAchievementCounts] = useState<{ unlocked: number; total: number }>({ unlocked: 0, total: 13 });
+  const [newAchievementQueue, setNewAchievementQueue] = useState<NewAchievement[]>([]);
+
+  const processNewAchievements = useCallback((newAchievements?: NewAchievement[]) => {
+    if (newAchievements && newAchievements.length > 0) {
+      setNewAchievementQueue(prev => [...prev, ...newAchievements]);
+      setAchievementCounts(prev => ({ ...prev, unlocked: prev.unlocked + newAchievements.length }));
+    }
+  }, []);
+
+  const dismissAchievementNotification = useCallback(() => {
+    setNewAchievementQueue(prev => prev.slice(1));
+  }, []);
+
+  const fetchAchievements = useCallback(async () => {
+    if (!initData) return;
+    try {
+      const data = await callGameApi('get-achievements', initData);
+      setAchievements(data.achievements || []);
+      setAchievementCounts({ unlocked: data.unlockedCount || 0, total: data.totalCount || 13 });
+    } catch { /* silent */ }
+  }, [initData]);
+
+  const claimAchievement = useCallback(async (achievementId: string) => {
+    if (!initData) return false;
+    try {
+      const data = await callGameApi('claim-achievement', initData, { achievementId });
+      if (data.success) {
+        setGameState(prev => ({ ...prev, energy: data.energy }));
+        setAchievements(prev => prev.map(a => a.id === achievementId ? { ...a, claimed: true } : a));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, [initData]);
+
   // Lucky wheel
   const [canSpinFree, setCanSpinFree] = useState(false);
 
@@ -542,5 +602,12 @@ export const useGameState = () => {
     canSpinFree,
     friends,
     fetchFriends,
+    achievements,
+    achievementCounts,
+    fetchAchievements,
+    claimAchievement,
+    newAchievementQueue,
+    dismissAchievementNotification,
+    processNewAchievements,
   };
 };

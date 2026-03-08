@@ -80,6 +80,84 @@ function generateReferralCode(): string {
 }
 
 // Upgrade catalog
+// Achievement catalog
+const ACHIEVEMENT_CATALOG = [
+  { id: 'first_tap', name: 'Primer Toque', description: 'Realiza tu primer tap', icon: '👆', reward: 10 },
+  { id: 'energy_1k', name: 'Colector', description: 'Alcanza 1,000 energía', icon: '⚡', reward: 100 },
+  { id: 'energy_10k', name: 'Minero Experto', description: 'Alcanza 10,000 energía', icon: '💎', reward: 500 },
+  { id: 'energy_100k', name: 'Magnate', description: 'Alcanza 100,000 energía', icon: '👑', reward: 2000 },
+  { id: 'first_referral', name: 'Embajador', description: 'Invita a tu primer amigo', icon: '🤝', reward: 200 },
+  { id: 'referrals_5', name: 'Reclutador', description: 'Invita a 5 amigos', icon: '📡', reward: 500 },
+  { id: 'referrals_25', name: 'Líder', description: 'Invita a 25 amigos', icon: '🛸', reward: 2000 },
+  { id: 'streak_7', name: 'Constante', description: 'Racha de 7 días', icon: '🔥', reward: 300 },
+  { id: 'streak_30', name: 'Dedicado', description: 'Racha de 30 días', icon: '💫', reward: 1500 },
+  { id: 'max_upgrade', name: 'Maxed Out', description: 'Lleva una mejora al nivel 5', icon: '🚀', reward: 1000 },
+  { id: 'join_clan', name: 'Camarada', description: 'Únete a un clan', icon: '🛡️', reward: 100 },
+  { id: 'spin_10', name: 'Apostador', description: 'Gira la ruleta 10 veces', icon: '🎰', reward: 200 },
+  { id: 'all_missions', name: 'Completista', description: 'Completa todas las misiones', icon: '✅', reward: 500 },
+];
+
+const TOTAL_MISSIONS_COUNT = 7; // Number of missions in the game
+
+async function checkAchievements(supabase: ReturnType<typeof createClient>, profileId: string): Promise<{ id: string; name: string; icon: string; reward: number }[]> {
+  // Get profile data
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('energy, referral_count, daily_streak, clan_id, total_spins, tap_power_level, passive_income_level, max_stamina_level, regen_speed_level')
+    .eq('id', profileId)
+    .single();
+
+  if (!profile) return [];
+
+  // Get existing achievements
+  const { data: existing } = await supabase
+    .from('achievements')
+    .select('achievement_id')
+    .eq('profile_id', profileId);
+
+  const existingIds = new Set((existing || []).map((a: { achievement_id: string }) => a.achievement_id));
+
+  // Get completed missions count
+  const { count: missionsCount } = await supabase
+    .from('missions_completed')
+    .select('id', { count: 'exact', head: true })
+    .eq('profile_id', profileId)
+    .eq('claimed', true);
+
+  // Evaluate conditions
+  const conditions: Record<string, boolean> = {
+    first_tap: profile.energy > 0,
+    energy_1k: profile.energy >= 1000,
+    energy_10k: profile.energy >= 10000,
+    energy_100k: profile.energy >= 100000,
+    first_referral: profile.referral_count >= 1,
+    referrals_5: profile.referral_count >= 5,
+    referrals_25: profile.referral_count >= 25,
+    streak_7: profile.daily_streak >= 7,
+    streak_30: profile.daily_streak >= 30,
+    max_upgrade: [profile.tap_power_level, profile.passive_income_level, profile.max_stamina_level, profile.regen_speed_level].some((l: number) => l >= 5),
+    join_clan: !!profile.clan_id,
+    spin_10: (profile.total_spins || 0) >= 10,
+    all_missions: (missionsCount || 0) >= TOTAL_MISSIONS_COUNT,
+  };
+
+  const newlyUnlocked: { id: string; name: string; icon: string; reward: number }[] = [];
+
+  for (const achievement of ACHIEVEMENT_CATALOG) {
+    if (!existingIds.has(achievement.id) && conditions[achievement.id]) {
+      const { error } = await supabase
+        .from('achievements')
+        .insert({ profile_id: profileId, achievement_id: achievement.id });
+      
+      if (!error) {
+        newlyUnlocked.push({ id: achievement.id, name: achievement.name, icon: achievement.icon, reward: achievement.reward });
+      }
+    }
+  }
+
+  return newlyUnlocked;
+}
+
 const UPGRADE_CATALOG: Record<string, { values: number[]; costs: number[]; maxLevel: number }> = {
   tap_power:      { values: [1, 2, 3, 5, 8],         costs: [100, 500, 2000, 8000, 25000],  maxLevel: 5 },
   passive_income: { values: [0, 5, 15, 30, 60],      costs: [200, 1000, 5000, 15000, 40000], maxLevel: 5 },
@@ -355,6 +433,9 @@ Deno.serve(async (req) => {
           );
         }
         
+        // Check achievements after tap
+        const newAchievements = await checkAchievements(supabase, profile.id);
+
         return new Response(
           JSON.stringify({ 
             success: true, 
@@ -362,6 +443,7 @@ Deno.serve(async (req) => {
             stamina: updatedProfile[0].stamina,
             multiplier: activeMultiplier,
             tapPower,
+            newAchievements,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -475,8 +557,11 @@ Deno.serve(async (req) => {
           .update({ energy: newEnergy })
           .eq('id', profile.id);
         
+        // Check achievements after mission claim
+        const newAchievementsMission = await checkAchievements(supabase, profile.id);
+
         return new Response(
-          JSON.stringify({ success: true, energy: newEnergy }),
+          JSON.stringify({ success: true, energy: newEnergy, newAchievements: newAchievementsMission }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -635,8 +720,10 @@ Deno.serve(async (req) => {
           .update({ energy: referrer.energy + 100, referral_count: referrer.referral_count + 1 })
           .eq('id', referrer.id);
 
+        const newAchievementsRef = await checkAchievements(supabase, profile.id);
+
         return new Response(
-          JSON.stringify({ success: true, energyGained: 50 }),
+          JSON.stringify({ success: true, energyGained: 50, newAchievements: newAchievementsRef }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -684,8 +771,10 @@ Deno.serve(async (req) => {
           .update({ energy: newEnergy, last_daily_claim: now.toISOString(), daily_streak: newStreak })
           .eq('id', profile.id);
 
+        const newAchievementsDaily = await checkAchievements(supabase, profile.id);
+
         return new Response(
-          JSON.stringify({ success: true, reward, streak: newStreak, energy: newEnergy }),
+          JSON.stringify({ success: true, reward, streak: newStreak, energy: newEnergy, newAchievements: newAchievementsDaily }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -858,6 +947,8 @@ Deno.serve(async (req) => {
             purchased_at: new Date().toISOString(),
           }, { onConflict: 'profile_id,upgrade_type' });
 
+        const newAchievementsUpgrade = await checkAchievements(supabase, profile.id);
+
         return new Response(
           JSON.stringify({ 
             success: true, 
@@ -865,6 +956,7 @@ Deno.serve(async (req) => {
             newValue: catalog.values[newLevel],
             energy: newEnergy,
             upgradeType,
+            newAchievements: newAchievementsUpgrade,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -1371,6 +1463,141 @@ Deno.serve(async (req) => {
 
         return new Response(
           JSON.stringify({ friends: friends || [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get-achievements': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy, referral_count, daily_streak, clan_id, total_spins, tap_power_level, passive_income_level, max_stamina_level, regen_speed_level')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: userAchievements } = await supabase
+          .from('achievements')
+          .select('achievement_id, unlocked_at, claimed')
+          .eq('profile_id', profile.id);
+
+        const userAchMap = new Map((userAchievements || []).map((a: { achievement_id: string; unlocked_at: string; claimed: boolean }) => [a.achievement_id, a]));
+
+        const { count: missionsCount } = await supabase
+          .from('missions_completed')
+          .select('id', { count: 'exact', head: true })
+          .eq('profile_id', profile.id)
+          .eq('claimed', true);
+
+        const progressMap: Record<string, { current: number; target: number }> = {
+          first_tap: { current: Math.min(profile.energy > 0 ? 1 : 0, 1), target: 1 },
+          energy_1k: { current: Math.min(profile.energy, 1000), target: 1000 },
+          energy_10k: { current: Math.min(profile.energy, 10000), target: 10000 },
+          energy_100k: { current: Math.min(profile.energy, 100000), target: 100000 },
+          first_referral: { current: Math.min(profile.referral_count, 1), target: 1 },
+          referrals_5: { current: Math.min(profile.referral_count, 5), target: 5 },
+          referrals_25: { current: Math.min(profile.referral_count, 25), target: 25 },
+          streak_7: { current: Math.min(profile.daily_streak, 7), target: 7 },
+          streak_30: { current: Math.min(profile.daily_streak, 30), target: 30 },
+          max_upgrade: { current: Math.min(Math.max(profile.tap_power_level, profile.passive_income_level, profile.max_stamina_level, profile.regen_speed_level), 5), target: 5 },
+          join_clan: { current: profile.clan_id ? 1 : 0, target: 1 },
+          spin_10: { current: Math.min(profile.total_spins || 0, 10), target: 10 },
+          all_missions: { current: Math.min(missionsCount || 0, TOTAL_MISSIONS_COUNT), target: TOTAL_MISSIONS_COUNT },
+        };
+
+        const achievements = ACHIEVEMENT_CATALOG.map(a => {
+          const ua = userAchMap.get(a.id) as { unlocked_at: string; claimed: boolean } | undefined;
+          const progress = progressMap[a.id] || { current: 0, target: 1 };
+          return {
+            ...a,
+            unlocked: !!ua,
+            unlockedAt: ua?.unlocked_at || null,
+            claimed: ua?.claimed || false,
+            progress: progress.current,
+            target: progress.target,
+          };
+        });
+
+        const unlockedCount = achievements.filter(a => a.unlocked).length;
+
+        return new Response(
+          JSON.stringify({ achievements, unlockedCount, totalCount: ACHIEVEMENT_CATALOG.length }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'claim-achievement': {
+        const body = await req.json();
+        const { achievementId } = body;
+
+        if (!achievementId || typeof achievementId !== 'string') {
+          return new Response(
+            JSON.stringify({ error: 'Invalid achievement ID' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const catalogEntry = ACHIEVEMENT_CATALOG.find(a => a.id === achievementId);
+        if (!catalogEntry) {
+          return new Response(
+            JSON.stringify({ error: 'Unknown achievement' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: achievement } = await supabase
+          .from('achievements')
+          .select('id, claimed')
+          .eq('profile_id', profile.id)
+          .eq('achievement_id', achievementId)
+          .single();
+
+        if (!achievement) {
+          return new Response(
+            JSON.stringify({ error: 'Achievement not unlocked' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (achievement.claimed) {
+          return new Response(
+            JSON.stringify({ error: 'Already claimed' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const newEnergy = profile.energy + catalogEntry.reward;
+
+        await supabase
+          .from('achievements')
+          .update({ claimed: true })
+          .eq('id', achievement.id);
+
+        await supabase
+          .from('profiles')
+          .update({ energy: newEnergy })
+          .eq('id', profile.id);
+
+        return new Response(
+          JSON.stringify({ success: true, energy: newEnergy, reward: catalogEntry.reward }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

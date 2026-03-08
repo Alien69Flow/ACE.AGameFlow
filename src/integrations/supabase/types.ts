@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievements: {
+        Row: {
+          achievement_id: string
+          claimed: boolean
+          id: string
+          profile_id: string
+          unlocked_at: string
+        }
+        Insert: {
+          achievement_id: string
+          claimed?: boolean
+          id?: string
+          profile_id: string
+          unlocked_at?: string
+        }
+        Update: {
+          achievement_id?: string
+          claimed?: boolean
+          id?: string
+          profile_id?: string
+          unlocked_at?: string
+        }
+        Relationships: []
+      }
       clan_members: {
         Row: {
           clan_id: string

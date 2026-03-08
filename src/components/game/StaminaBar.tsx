@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Battery, Zap, Star } from 'lucide-react';
+import { Battery, Zap, Star, Trophy } from 'lucide-react';
 
 interface StaminaBarProps {
   stamina: number;
@@ -7,9 +7,10 @@ interface StaminaBarProps {
   energy: number;
   multiplier?: number;
   multiplierExpiresAt?: string | null;
+  achievementCounts?: { unlocked: number; total: number };
 }
 
-export const StaminaBar = ({ stamina, maxStamina, energy, multiplier = 1, multiplierExpiresAt }: StaminaBarProps) => {
+export const StaminaBar = ({ stamina, maxStamina, energy, multiplier = 1, multiplierExpiresAt, achievementCounts }: StaminaBarProps) => {
   const staminaPercent = (stamina / maxStamina) * 100;
   const isMultiplierActive = multiplier > 1 && multiplierExpiresAt && new Date(multiplierExpiresAt) > new Date();
 
@@ -32,6 +33,12 @@ export const StaminaBar = ({ stamina, maxStamina, energy, multiplier = 1, multip
                 <Star className="w-3 h-3 text-secondary" />
                 <span className="font-display text-[9px] text-secondary font-bold">{multiplier}×</span>
               </motion.span>
+            )}
+            {achievementCounts && (
+              <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-secondary/20 border border-secondary/40">
+                <Trophy className="w-3 h-3 text-secondary" />
+                <span className="font-display text-[9px] text-secondary font-bold">{achievementCounts.unlocked}/{achievementCounts.total}</span>
+              </span>
             )}
           </div>
           <div className="h-3 bg-muted rounded-full overflow-hidden border border-primary/30">
