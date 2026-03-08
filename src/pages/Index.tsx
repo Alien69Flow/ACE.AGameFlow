@@ -295,6 +295,7 @@ const Index = () => {
             multiplier={gameState.multiplier}
             multiplierExpiresAt={gameState.multiplierExpiresAt}
             onActivateMultiplier={activateMultiplier}
+            onApplyEnergyPack={applyEnergyPack}
           />
         )}
         {currentScreen === 'upgrades' && (
