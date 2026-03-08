@@ -12,7 +12,7 @@ import { MineScreen } from '@/screens/MineScreen';
 import { NetworkScreen } from '@/screens/NetworkScreen';
 import { UpgradesScreen } from '@/screens/UpgradesScreen';
 import { AirdropScreen } from '@/screens/AirdropScreen';
-import { Zap } from 'lucide-react';
+import { Zap, Trophy } from 'lucide-react';
 
 type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop';
 
