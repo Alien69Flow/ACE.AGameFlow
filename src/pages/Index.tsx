@@ -56,6 +56,7 @@ const Index = () => {
     leaveClan,
     fetchClanLeaderboard,
     clanLeaderboard,
+    verifyMission,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
