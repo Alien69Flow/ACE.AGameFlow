@@ -277,6 +277,8 @@ const Index = () => {
             onLeaveClan={leaveClan}
             clanLeaderboard={clanLeaderboard}
             onFetchClanLeaderboard={fetchClanLeaderboard}
+            friends={friends}
+            onFetchFriends={fetchFriends}
           />
         )}
         {currentScreen === 'airdrop' && (
