@@ -1,19 +1,100 @@
 
+# 🌍 AlienFlow - Telegram Mini App
 
-## Plan: Fix Social Links + Additional Landing Page Improvements
+## Visión General
+Una experiencia de minería de Energía Punto Cero con estética **Greenpunk/Solarpunk**. El usuario es un "Alien" que extrae energía del núcleo de la Tierra a través de un Toroide gravitatorio.
 
-### 1. Fix GitBook & TikTok URLs
-Remove `soon: true` and add real URLs:
-- **GitBook**: `https://alienflowspace.gitbook.io/dao/`
-- **TikTok**: `https://tiktok.com/@Alien69Flow`
+---
 
-### 2. Additional Improvements
-- **Scroll-triggered fade on social grid**: Add a staggered `framer-motion` entrance where each icon animates in one by one (left to right, top to bottom) with a 50ms delay between each
-- **Hover micro-interactions on social icons**: Scale up to 1.15x + glow border on hover for a more premium feel
-- **"Powered by TON" badge**: Add a small animated badge near the bottom with the TON logo icon, pulsing subtly — adds credibility
-- **Responsive polish**: On very small screens (< 360px), reduce the social grid to 4 columns instead of 5 to avoid cramping
-- **Accessibility**: Add `aria-label` to all social links for screen readers
+## 🎨 Diseño Visual
+- **Paleta**: Fondo #000 (negro profundo), Verde Neón #39FF14, Oro Tesla #D4AF37
+- **Estilo**: Cinematográfico, futurista, con brillos, halos y partículas flotantes
+- **Tipografía**: Sans-serif futurista con efectos de brillo neón
 
-### Files Modified
-1. `src/components/game/LandingScreen.tsx` — fix URLs, add staggered social grid animation, hover effects, TON badge, responsive tweaks
+---
 
+## 📱 Pantallas
+
+### 1. PLANETA (Pantalla Principal)
+- **Tierra 3D** central rotando con Three.js (texturas realistas, nubes, atmósfera brillante)
+- **6 slots hexagonales** orbitando alrededor:
+  - Slot 1: "Core Mina" — Estilo Solarpunk con animación de actividad
+  - Slots 2-6: Bloqueados con candado dorado animado
+- **Tutorial inicial**: Overlay Greenpunk con pasos guiados y tooltips animados
+
+### 2. MINA
+- **Toroide central** con animaciones 2D premium en Framer Motion:
+  - Flujo gravitatorio continuo con partículas verde neón
+  - Pulso magnético al ritmo del tap
+  - Ondas expansivas al extraer energía
+- **Interacción**: Tap = +1 Energía, -1 Stamina, vibración visual y efecto de sonido
+- **Indicadores**: Contador de Energía y barra de Stamina visibles
+
+### 3. RED (Conexiones Sociales)
+- **Botón "Conectar Wallet TON"** prominente (funcionalidad preparada para futuro)
+- **Sección Misiones** (+50 Energía cada una):
+  - Facebook, Instagram, LinkedIn, Telegram, X (Twitter) — Orden alfabético
+  - Flujo: Clic → Abre enlace → Al volver, "Verificando..." (33s) → "Reclamar Recompensa"
+- **Sección Ecosistema** (orden alfabético):
+  - AlienFlow DAO, Discord (Coming Soon), Email, GitBook, GitHub, LinkedIn Personal, Reddit, Threads, TikTok (Coming Soon)
+- **Sección Legado**: 2 colecciones de OpenSea NFTs
+
+---
+
+## ⚙️ Mecánicas de Juego
+
+### Stamina
+- Máximo: 100 puntos
+- Recarga: +1 cada 60 segundos automáticamente
+- Persistencia en Supabase (sincronizado entre dispositivos)
+
+### Energía Punto Cero
+- Contador acumulativo sin límite
+- Se gana: +1 por tap en Toroide, +50 por misión completada
+- Sincronizado en la nube via Supabase
+
+### Verificación de Misiones
+- Sistema de "Verificación con Retraso Simulado"
+- Contador de 33 segundos post-visita antes de poder reclamar
+- Estado guardado en Supabase para evitar repetición
+
+---
+
+## 🎵 Audio Inmersivo
+- **Música ambiental** Solarpunk/electrónica orgánica (loop continuo, toggleable)
+- **Efectos de sonido**:
+  - Tap en Toroide: pulso energético
+  - Misión completada: tono de logro
+  - Navegación: transiciones suaves
+  - Tutorial: notificaciones sutiles
+
+---
+
+## 🔧 Integraciones Técnicas
+
+### Telegram Mini App
+- SDK oficial de Telegram WebApp
+- `window.Telegram.WebApp.expand()` para pantalla completa
+- Todos los enlaces abren en ventana nueva
+
+### Backend (Supabase)
+- **Tablas**: usuarios, stamina, energía, misiones_completadas
+- **Autenticación**: Via Telegram user_id
+- **Sincronización**: Tiempo real para progreso entre dispositivos
+- **Edge Functions**: Para audio (ElevenLabs) y validaciones
+
+### Tecnologías Frontend
+- React + TypeScript + Vite
+- Three.js + @react-three/fiber (Tierra 3D)
+- Framer Motion (Toroide y animaciones UI)
+- Tailwind CSS (estilos Greenpunk)
+
+---
+
+## 📋 Sistema de Tutorial
+
+1. **Paso 1**: "Bienvenido Alien. Este es el Planeta Tierra Nivel 0."
+2. **Paso 2**: "Pulsa en la Core Mina para entrar al núcleo de energía."
+3. **Paso 3**: "En la Mina, pulsa el Toroide para extraer Energía Punto Cero."
+
+Cada paso con overlay oscuro, spotlight en el elemento relevante, y animación de siguiente paso.

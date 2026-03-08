@@ -36,14 +36,14 @@ const SOCIAL_LINKS = [
   { name: 'Facebook', icon: Facebook, url: 'https://facebook.com/Alien69Flow' },
   { name: 'Farcaster', icon: AtSign, url: 'https://warpcast.com/alien69flow' },
   { name: 'GitHub', icon: Github, url: 'https://github.com/Alien69Flow' },
-  { name: 'GitBook', icon: BookOpen, url: '#', soon: true },
+  { name: 'GitBook', icon: BookOpen, url: 'https://alienflowspace.gitbook.io/dao/' },
   { name: 'HackMD', icon: FileText, url: 'https://hackmd.io/@Alien69Flow' },
   { name: 'Instagram', icon: Instagram, url: 'https://instagram.com/alien69flow' },
   { name: 'LinkedIn', icon: Linkedin, url: 'https://linkedin.com/company/alienflow' },
   { name: 'Reddit', icon: MessageSquare, url: 'https://reddit.com/u/Alien69Flow' },
   { name: 'Telegram', icon: Send, url: 'https://t.me/AlienFlow' },
   { name: 'Threads', icon: AtSign, url: 'https://threads.net/@alien69flow' },
-  { name: 'TikTok', icon: Music, url: '#', soon: true },
+  { name: 'TikTok', icon: Music, url: 'https://tiktok.com/@Alien69Flow' },
   { name: 'Website', icon: Globe, url: 'https://alienflow.space' },
   { name: 'X', icon: () => <span className="font-bold text-xs">𝕏</span>, url: 'https://x.com/alien69flow' },
 ];
@@ -266,25 +266,25 @@ export const LandingScreen = () => {
         </motion.a>
 
         {/* Social Links Grid - Alphabetical with Lucide Icons */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 2.6, duration: 0.6 }}
-          className="grid grid-cols-5 gap-2 mt-2 w-full max-w-sm"
-        >
-          {SOCIAL_LINKS.map((social) => {
+        <div className="grid grid-cols-5 max-[360px]:grid-cols-4 gap-2 mt-2 w-full max-w-sm">
+          {SOCIAL_LINKS.map((social, index) => {
             const IconComponent = social.icon;
             return (
-              <a
+              <motion.a
                 key={social.name}
                 href={social.soon ? undefined : social.url}
                 target={social.soon ? undefined : '_blank'}
                 rel="noopener noreferrer"
+                aria-label={social.soon ? `${social.name} (coming soon)` : `Visit ${social.name}`}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 2.6 + index * 0.05, duration: 0.35 }}
+                whileHover={social.soon ? {} : { scale: 1.15 }}
                 className={`
                   flex flex-col items-center gap-0.5 p-2 rounded-lg transition-all duration-200
                   ${social.soon 
                     ? 'opacity-30 cursor-default' 
-                    : 'hover:bg-primary/10 hover:scale-105 cursor-pointer'
+                    : 'hover:bg-primary/10 hover:shadow-[0_0_8px_hsl(var(--primary)/0.3)] cursor-pointer'
                   }
                 `}
                 title={social.name}
@@ -297,16 +297,34 @@ export const LandingScreen = () => {
                   {social.name.toUpperCase()}
                   {social.soon && ' ⏳'}
                 </span>
-              </a>
+              </motion.a>
             );
           })}
+        </div>
+
+        {/* Powered by TON badge */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 3 }}
+          className="flex items-center gap-1.5 mt-1"
+        >
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity }}
+            className="flex items-center gap-1 px-3 py-1 rounded-full border border-primary/20 bg-card/60 backdrop-blur-sm"
+          >
+            <span className="text-[9px] text-primary/60 tracking-[0.15em] font-semibold" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+              ⬡ POWERED BY TON
+            </span>
+          </motion.div>
         </motion.div>
 
         {/* Bottom tag */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 2.8 }}
+          transition={{ delay: 3.1 }}
           className="text-[8px] text-muted-foreground/40 text-center tracking-[0.2em] mt-1"
           style={{ fontFamily: "'Rajdhani', sans-serif" }}
         >
