@@ -144,6 +144,18 @@
   .animate-float {
     animation: float 6s ease-in-out infinite;
   }
+
+  /* Glitch effect for cinematic title */
+  .glitch {
+    animation: glitch-burst 2s ease-out forwards, glitch-subtle 4s ease-in-out 2s infinite;
+  }
+
+  /* Typing cursor */
+  .typing-cursor::after {
+    content: '▌';
+    animation: blink-cursor 1s step-end infinite;
+    color: hsl(var(--primary));
+  }
 }
 
 @keyframes pulse-glow {
