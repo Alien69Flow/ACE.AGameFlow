@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { Copy, Send, Users, Trophy, Crown, Medal, Award, Zap, Shield, LogOut, Plus } from 'lucide-react';
+import { Copy, Send, Users, Trophy, Crown, Medal, Award, Zap, Shield, LogOut, Plus, Check, Lock } from 'lucide-react';
 import { MissionCard } from '@/components/game/MissionCard';
 import { EcosystemLink } from '@/components/game/EcosystemLink';
 import { Input } from '@/components/ui/input';
