@@ -602,5 +602,12 @@ export const useGameState = () => {
     canSpinFree,
     friends,
     fetchFriends,
+    achievements,
+    achievementCounts,
+    fetchAchievements,
+    claimAchievement,
+    newAchievementQueue,
+    dismissAchievementNotification,
+    processNewAchievements,
   };
 };
