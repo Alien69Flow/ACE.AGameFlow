@@ -241,7 +241,7 @@ export const NetworkScreen = ({
               <div className="space-y-2">
                 {missions.map((mission, index) => (
                   <motion.div key={mission.id} initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: index * 0.05 }}>
-                    <MissionCard {...mission} onStart={() => onStartMission(mission.id)} onClaim={() => onClaimMission(mission.id, mission.reward)} openLink={openLink} />
+                    <MissionCard {...mission} onStart={() => onStartMission(mission.id)} onClaim={() => onClaimMission(mission.id, mission.reward)} onVerify={mission.verifiable && mission.verifyType ? () => onVerifyMission(mission.id, mission.verifyType!) : undefined} openLink={openLink} />
                   </motion.div>
                 ))}
               </div>
