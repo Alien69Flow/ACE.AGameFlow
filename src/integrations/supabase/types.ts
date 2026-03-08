@@ -152,8 +152,10 @@ export type Database = {
           energy: number
           id: string
           last_daily_claim: string | null
+          last_free_spin: string | null
           last_seen_at: string
           last_stamina_update: string
+          last_tap_at: string | null
           max_stamina: number
           max_stamina_level: number
           multiplier: number
@@ -166,6 +168,7 @@ export type Database = {
           stamina: number
           tap_power_level: number
           telegram_id: string
+          total_spins: number | null
           tutorial_completed: boolean
           updated_at: string
           username: string | null
@@ -177,8 +180,10 @@ export type Database = {
           energy?: number
           id?: string
           last_daily_claim?: string | null
+          last_free_spin?: string | null
           last_seen_at?: string
           last_stamina_update?: string
+          last_tap_at?: string | null
           max_stamina?: number
           max_stamina_level?: number
           multiplier?: number
@@ -191,6 +196,7 @@ export type Database = {
           stamina?: number
           tap_power_level?: number
           telegram_id: string
+          total_spins?: number | null
           tutorial_completed?: boolean
           updated_at?: string
           username?: string | null
@@ -202,8 +208,10 @@ export type Database = {
           energy?: number
           id?: string
           last_daily_claim?: string | null
+          last_free_spin?: string | null
           last_seen_at?: string
           last_stamina_update?: string
+          last_tap_at?: string | null
           max_stamina?: number
           max_stamina_level?: number
           multiplier?: number
@@ -216,6 +224,7 @@ export type Database = {
           stamina?: number
           tap_power_level?: number
           telegram_id?: string
+          total_spins?: number | null
           tutorial_completed?: boolean
           updated_at?: string
           username?: string | null

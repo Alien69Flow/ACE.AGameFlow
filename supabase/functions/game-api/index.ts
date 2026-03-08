@@ -6,11 +6,14 @@ const corsHeaders = {
 };
 
 // Validate Telegram WebApp initData
-async function validateTelegramInitData(initData: string, botToken: string): Promise<{ valid: boolean; user?: { id: number; username?: string; first_name?: string } }> {
+async function validateTelegramInitData(initData: string, botToken: string): Promise<{ valid: boolean; user?: { id: number; username?: string; first_name?: string }; startParam?: string }> {
   try {
     const params = new URLSearchParams(initData);
     const hash = params.get('hash');
     if (!hash) return { valid: false };
+    
+    // Extract start_param before deleting hash
+    const startParam = params.get('start_param') || undefined;
     
     params.delete('hash');
     
@@ -60,7 +63,7 @@ async function validateTelegramInitData(initData: string, botToken: string): Pro
     if (!userStr) return { valid: false };
     
     const user = JSON.parse(userStr);
-    return { valid: true, user };
+    return { valid: true, user, startParam };
   } catch (error) {
     console.error('Telegram validation failed');
     return { valid: false };
@@ -105,6 +108,7 @@ Deno.serve(async (req) => {
     
     let telegramUserId: string;
     let telegramUsername: string | null = null;
+    let startParam: string | undefined;
     
     if (initData) {
       const validation = await validateTelegramInitData(initData, botToken);
@@ -116,6 +120,7 @@ Deno.serve(async (req) => {
       }
       telegramUserId = validation.user.id.toString();
       telegramUsername = validation.user.username || validation.user.first_name || null;
+      startParam = validation.startParam;
     } else {
       return new Response(
         JSON.stringify({ error: 'Missing authentication' }),
@@ -149,6 +154,30 @@ Deno.serve(async (req) => {
           
           if (createError) throw createError;
           profile = newProfile;
+
+          // Auto-apply deep link referral on first launch
+          if (startParam && profile && !profile.referred_by) {
+            const { data: referrer } = await supabase
+              .from('profiles')
+              .select('id, energy, referral_count')
+              .eq('referral_code', startParam)
+              .single();
+            
+            if (referrer && referrer.id !== profile.id) {
+              await supabase
+                .from('profiles')
+                .update({ referred_by: referrer.id, energy: profile.energy + 50 })
+                .eq('id', profile.id);
+              
+              await supabase
+                .from('profiles')
+                .update({ energy: referrer.energy + 100, referral_count: referrer.referral_count + 1 })
+                .eq('id', referrer.id);
+              
+              profile.energy = profile.energy + 50;
+              profile.referred_by = referrer.id;
+            }
+          }
         }
         
         // Generate referral code if missing
@@ -245,7 +274,7 @@ Deno.serve(async (req) => {
       case 'tap': {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, energy, stamina, multiplier, multiplier_expires_at, tap_power_level')
+          .select('id, energy, stamina, multiplier, multiplier_expires_at, tap_power_level, last_tap_at')
           .eq('telegram_id', telegramUserId)
           .single();
         
@@ -253,6 +282,19 @@ Deno.serve(async (req) => {
           return new Response(
             JSON.stringify({ error: 'Profile not found' }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Anti-cheat: Rate limiting
+        const now = Date.now();
+        const lastTapTime = profile.last_tap_at ? new Date(profile.last_tap_at).getTime() : 0;
+        const timeSinceLastTap = now - lastTapTime;
+        
+        // Block taps faster than 100ms (bot detection)
+        if (timeSinceLastTap < 100) {
+          return new Response(
+            JSON.stringify({ error: 'Rate limited', success: false }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
         
@@ -288,7 +330,8 @@ Deno.serve(async (req) => {
           .update({ 
             energy: newEnergy, 
             stamina: newStamina, 
-            last_stamina_update: new Date().toISOString() 
+            last_stamina_update: new Date().toISOString(),
+            last_tap_at: new Date().toISOString()
           })
           .eq('id', profile.id)
           .eq('stamina', profile.stamina)
@@ -1202,6 +1245,143 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ verified: false, error: 'Unknown verify type' }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'spin-wheel': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy, last_free_spin, total_spins, multiplier, multiplier_expires_at')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check free spin eligibility
+        const now = new Date();
+        const lastSpin = profile.last_free_spin ? new Date(profile.last_free_spin) : null;
+        const canSpinFree = !lastSpin || (now.getTime() - lastSpin.getTime()) > 24 * 60 * 60 * 1000;
+
+        if (!canSpinFree) {
+          return new Response(
+            JSON.stringify({ error: 'No free spin available', canSpinFree: false }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Weighted random prize selection
+        const PRIZES = [
+          { label: '10', value: 10, type: 'energy', weight: 25 },
+          { label: '25', value: 25, type: 'energy', weight: 20 },
+          { label: '50', value: 50, type: 'energy', weight: 15 },
+          { label: '100', value: 100, type: 'energy', weight: 12 },
+          { label: '250', value: 250, type: 'energy', weight: 8 },
+          { label: '2×', value: 2, type: 'boost', weight: 5 },
+          { label: '500', value: 500, type: 'energy', weight: 4 },
+          { label: '💀', value: 0, type: 'empty', weight: 11 },
+        ];
+
+        const totalWeight = PRIZES.reduce((sum, p) => sum + p.weight, 0);
+        let random = Math.random() * totalWeight;
+        let selectedPrize = PRIZES[0];
+        
+        for (const prize of PRIZES) {
+          random -= prize.weight;
+          if (random <= 0) {
+            selectedPrize = prize;
+            break;
+          }
+        }
+
+        // Apply prize
+        const updates: Record<string, unknown> = {
+          last_free_spin: now.toISOString(),
+          total_spins: (profile.total_spins || 0) + 1,
+        };
+
+        if (selectedPrize.type === 'energy') {
+          updates.energy = profile.energy + selectedPrize.value;
+        } else if (selectedPrize.type === 'boost') {
+          updates.multiplier = 2;
+          updates.multiplier_expires_at = new Date(now.getTime() + 60 * 60 * 1000).toISOString(); // 1h
+        }
+
+        await supabase.from('profiles').update(updates).eq('id', profile.id);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            prize: selectedPrize,
+            canSpinFree: false,
+            newEnergy: selectedPrize.type === 'energy' ? profile.energy + selectedPrize.value : profile.energy,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get-wheel-status': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('last_free_spin, total_spins')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const now = new Date();
+        const lastSpin = profile.last_free_spin ? new Date(profile.last_free_spin) : null;
+        const canSpinFree = !lastSpin || (now.getTime() - lastSpin.getTime()) > 24 * 60 * 60 * 1000;
+
+        return new Response(
+          JSON.stringify({ canSpinFree, totalSpins: profile.total_spins || 0 }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get-friends': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: friends } = await supabase
+          .from('profiles')
+          .select('username, energy, last_seen_at')
+          .eq('referred_by', profile.id)
+          .order('energy', { ascending: false })
+          .limit(50);
+
+        return new Response(
+          JSON.stringify({ friends: friends || [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'verify-payment': {
+        // TON payment verification endpoint
+        // Requires TON Center API to verify transaction
+        // For now, return not implemented
+        return new Response(
+          JSON.stringify({ error: 'Payment verification not yet configured' }),
+          { status: 501, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       

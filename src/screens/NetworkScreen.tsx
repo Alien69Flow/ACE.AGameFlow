@@ -31,6 +31,12 @@ interface ClanInfo {
   total_energy: number;
 }
 
+interface FriendEntry {
+  username: string | null;
+  energy: number;
+  last_seen_at: string;
+}
+
 interface NetworkScreenProps {
   missions: Mission[];
   onStartMission: (id: string) => void;
@@ -51,6 +57,8 @@ interface NetworkScreenProps {
   onLeaveClan: () => Promise<boolean>;
   clanLeaderboard: ClanInfo[];
   onFetchClanLeaderboard: () => void;
+  friends: FriendEntry[];
+  onFetchFriends: () => void;
 }
 
 const ecosystemLinks = [
@@ -93,11 +101,13 @@ export const NetworkScreen = ({
   onLeaveClan,
   clanLeaderboard,
   onFetchClanLeaderboard,
+  friends,
+  onFetchFriends,
 }: NetworkScreenProps) => {
   const [refInput, setRefInput] = useState('');
   const [refStatus, setRefStatus] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [activeTab, setActiveTab] = useState<'social' | 'leaderboard' | 'clans'>('social');
+  const [activeTab, setActiveTab] = useState<'social' | 'leaderboard' | 'clans' | 'friends'>('social');
   const [clanName, setClanName] = useState('');
   const [clanStatus, setClanStatus] = useState<string | null>(null);
 
@@ -111,8 +121,14 @@ export const NetworkScreen = ({
 
   const handleShareTelegram = () => {
     if (referralCode) {
-      const url = `https://t.me/share/url?url=https://t.me/Alien69Bot?start=${referralCode}&text=🛸 Únete a AlienFlow y mina Energía Punto Cero!`;
-      openLink(url);
+      const botLink = `https://t.me/Alien69Bot?start=${referralCode}`;
+      const message = encodeURIComponent(`🛸 Únete a AlienFlow y mina Energía Punto Cero! +50 energía gratis al unirte\n${botLink}`);
+      const tg = (window as unknown as { Telegram?: { WebApp?: { openTelegramLink: (url: string) => void } } }).Telegram?.WebApp;
+      if (tg?.openTelegramLink) {
+        tg.openTelegramLink(`https://t.me/share/url?url=${botLink}&text=${message}`);
+      } else {
+        openLink(`https://t.me/share/url?url=${botLink}&text=${message}`);
+      }
     }
   };
 
@@ -216,6 +232,7 @@ export const NetworkScreen = ({
         <div className="flex gap-1.5">
           {[
             { id: 'social' as const, label: 'MISIONES' },
+            { id: 'friends' as const, label: 'AMIGOS', onClick: onFetchFriends },
             { id: 'leaderboard' as const, label: 'RANKING', onClick: onFetchLeaderboard },
             { id: 'clans' as const, label: 'CLANES', onClick: onFetchClanLeaderboard },
           ].map(tab => (
@@ -379,6 +396,48 @@ export const NetworkScreen = ({
                 );
               })}
               {clanLeaderboard.length === 0 && <p className="text-center text-muted-foreground text-xs py-8">No hay clanes aún. ¡Crea el primero!</p>}
+            </div>
+          </section>
+        )}
+
+        {activeTab === 'friends' && (
+          <section>
+            <motion.h2 initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="font-display text-base font-bold text-secondary text-glow-gold mb-2">
+              👾 AMIGOS REFERIDOS
+            </motion.h2>
+            <div className="space-y-1.5">
+              {friends.map((friend, index) => {
+                const lastSeen = new Date(friend.last_seen_at);
+                const minutesAgo = Math.floor((Date.now() - lastSeen.getTime()) / (1000 * 60));
+                const isOnline = minutesAgo < 5;
+                const timeAgo = minutesAgo < 60 ? `${minutesAgo}m` : minutesAgo < 1440 ? `${Math.floor(minutesAgo / 60)}h` : `${Math.floor(minutesAgo / 1440)}d`;
+                
+                return (
+                  <motion.div key={index} initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: index * 0.03 }}
+                    className="flex items-center gap-3 p-2.5 rounded-lg bg-card/50 border border-muted/10"
+                  >
+                    <div className="relative">
+                      <Users className="w-5 h-5 text-muted-foreground" />
+                      {isOnline && <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-display text-xs text-foreground truncate block">{friend.username || 'Anonymous'}</span>
+                      <span className="font-body text-[9px] text-muted-foreground">{isOnline ? '🟢 Online' : `Visto hace ${timeAgo}`}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-secondary" />
+                      <span className="font-display text-sm font-bold text-secondary text-glow-gold">{friend.energy.toLocaleString()}</span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+              {friends.length === 0 && (
+                <div className="text-center py-8">
+                  <Users className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                  <p className="text-muted-foreground text-xs">Aún no tienes amigos referidos</p>
+                  <p className="text-muted-foreground/60 text-[10px] mt-1">¡Comparte tu código para ganar energía!</p>
+                </div>
+              )}
             </div>
           </section>
         )}

@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Earth3D } from '@/components/game/Earth3D';
 import { HexSlot } from '@/components/game/HexSlot';
 import { getTutorialHighlight } from '@/components/game/Tutorial';
-import { Gift, Zap, Flame } from 'lucide-react';
+import { LuckyWheel } from '@/components/game/LuckyWheel';
+import { Gift, Zap, Flame, Sparkles } from 'lucide-react';
 
 interface PlanetScreenProps {
   onEnterMine: () => void;
@@ -11,6 +12,8 @@ interface PlanetScreenProps {
   dailyRewardAvailable: boolean;
   dailyStreak: number;
   onClaimDaily: () => Promise<{ reward: number; streak: number } | null>;
+  onSpinWheel: () => Promise<{ prize: { type: string; value: number; label: string } | null; canSpinFree: boolean; error?: string }>;
+  canSpinFree: boolean;
 }
 
 const slots = [
@@ -22,11 +25,12 @@ const slots = [
   { id: 6, name: 'Slot 6', isUnlocked: false },
 ];
 
-export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily }: PlanetScreenProps) => {
+export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily, onSpinWheel, canSpinFree }: PlanetScreenProps) => {
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [showDailyModal, setShowDailyModal] = useState(dailyRewardAvailable);
   const [claimResult, setClaimResult] = useState<{ reward: number; streak: number } | null>(null);
   const [claiming, setClaiming] = useState(false);
+  const [showWheel, setShowWheel] = useState(false);
 
   const handleClaim = async () => {
     setClaiming(true);
@@ -155,6 +159,33 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
           />
         ))}
       </div>
+
+      {/* Lucky Wheel Floating Button */}
+      <motion.button
+        onClick={() => setShowWheel(true)}
+        className={`absolute bottom-24 right-4 p-3 rounded-full border-2 transition-all z-20
+          ${canSpinFree 
+            ? 'bg-secondary/20 border-secondary text-secondary animate-pulse' 
+            : 'bg-card/80 border-muted-foreground/30 text-muted-foreground'
+          }`}
+        whileTap={{ scale: 0.9 }}
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        <Sparkles className="w-6 h-6" />
+        {canSpinFree && (
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-secondary rounded-full animate-ping" />
+        )}
+      </motion.button>
+
+      {/* Lucky Wheel Modal */}
+      <LuckyWheel
+        isOpen={showWheel}
+        onClose={() => setShowWheel(false)}
+        onSpin={onSpinWheel}
+        canSpinFree={canSpinFree}
+      />
 
       {/* Particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">

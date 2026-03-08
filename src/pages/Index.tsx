@@ -57,6 +57,10 @@ const Index = () => {
     fetchClanLeaderboard,
     clanLeaderboard,
     verifyMission,
+    spinWheel,
+    canSpinFree,
+    friends,
+    fetchFriends,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
@@ -227,6 +231,8 @@ const Index = () => {
             dailyRewardAvailable={dailyRewardAvailable}
             dailyStreak={gameState.dailyStreak}
             onClaimDaily={claimDaily}
+            onSpinWheel={spinWheel}
+            canSpinFree={canSpinFree}
           />
         )}
         {currentScreen === 'mine' && (
@@ -271,6 +277,8 @@ const Index = () => {
             onLeaveClan={leaveClan}
             clanLeaderboard={clanLeaderboard}
             onFetchClanLeaderboard={fetchClanLeaderboard}
+            friends={friends}
+            onFetchFriends={fetchFriends}
           />
         )}
         {currentScreen === 'airdrop' && (
