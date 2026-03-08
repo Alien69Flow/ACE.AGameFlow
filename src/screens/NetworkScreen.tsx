@@ -461,6 +461,79 @@ export const NetworkScreen = ({
             </div>
           </section>
         )}
+
+        {activeTab === 'achievements' && (
+          <section>
+            <motion.h2 initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="font-display text-base font-bold text-secondary text-glow-gold mb-2">
+              🏆 LOGROS
+            </motion.h2>
+            <div className="space-y-2">
+              {achievements.map((achievement, index) => {
+                const progressPercent = achievement.target > 0 ? Math.min((achievement.progress / achievement.target) * 100, 100) : 0;
+                return (
+                  <motion.div
+                    key={achievement.id}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: index * 0.04 }}
+                    className={`p-3 rounded-xl border ${
+                      achievement.claimed 
+                        ? 'bg-card/40 border-muted/20 opacity-60' 
+                        : achievement.unlocked 
+                          ? 'bg-card/90 border-secondary/40 box-glow-gold' 
+                          : 'bg-card/50 border-muted/20'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-2xl w-10 text-center">
+                        {achievement.unlocked ? achievement.icon : <Lock className="w-5 h-5 text-muted-foreground mx-auto" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className={`font-display text-xs font-bold ${achievement.unlocked ? 'text-foreground' : 'text-muted-foreground'}`}>
+                            {achievement.name}
+                          </span>
+                          {achievement.claimed && <Check className="w-3 h-3 text-primary" />}
+                        </div>
+                        <span className="font-body text-[10px] text-muted-foreground block">{achievement.description}</span>
+                        {!achievement.unlocked && (
+                          <div className="mt-1.5">
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <motion.div
+                                className="h-full bg-gradient-to-r from-primary/60 to-primary rounded-full"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progressPercent}%` }}
+                              />
+                            </div>
+                            <span className="font-body text-[9px] text-muted-foreground mt-0.5 block">
+                              {achievement.progress}/{achievement.target}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        {achievement.unlocked && !achievement.claimed ? (
+                          <motion.button
+                            onClick={() => onClaimAchievement(achievement.id)}
+                            whileTap={{ scale: 0.9 }}
+                            className="px-3 py-1.5 rounded-lg bg-secondary/20 border border-secondary/40 font-display text-[10px] text-secondary hover:bg-secondary/30 transition-colors"
+                          >
+                            +{achievement.reward} ⚡
+                          </motion.button>
+                        ) : (
+                          <span className="font-display text-[10px] text-muted-foreground">
+                            +{achievement.reward} ⚡
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+              {achievements.length === 0 && <p className="text-center text-muted-foreground text-xs py-8">Cargando logros...</p>}
+            </div>
+          </section>
+        )}
       </div>
     </motion.div>
   );
