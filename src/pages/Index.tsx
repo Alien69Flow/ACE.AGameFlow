@@ -61,6 +61,12 @@ const Index = () => {
     canSpinFree,
     friends,
     fetchFriends,
+    achievements,
+    achievementCounts,
+    fetchAchievements,
+    claimAchievement,
+    newAchievementQueue,
+    dismissAchievementNotification,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
