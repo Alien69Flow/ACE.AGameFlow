@@ -9,6 +9,13 @@ interface GameState {
   maxStamina: number;
   tutorialCompleted: boolean;
   profileId: string | null;
+  referralCode: string | null;
+  referralCount: number;
+  hasReferred: boolean;
+  dailyStreak: number;
+  lastDailyClaim: string | null;
+  multiplier: number;
+  multiplierExpiresAt: string | null;
 }
 
 interface Mission {
@@ -20,6 +27,12 @@ interface Mission {
   startedAt: Date | null;
   completedAt: Date | null;
   claimed: boolean;
+}
+
+interface LeaderboardEntry {
+  username: string | null;
+  energy: number;
+  referral_count: number;
 }
 
 async function callGameApi(endpoint: string, initData: string, body?: object) {
@@ -48,15 +61,24 @@ export const useGameState = () => {
     maxStamina: 100,
     tutorialCompleted: false,
     profileId: null,
+    referralCode: null,
+    referralCount: 0,
+    hasReferred: false,
+    dailyStreak: 0,
+    lastDailyClaim: null,
+    multiplier: 1,
+    multiplierExpiresAt: null,
   });
   const [missions, setMissions] = useState<Mission[]>([]);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [userRank, setUserRank] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [dailyRewardAvailable, setDailyRewardAvailable] = useState(false);
   
-  // REFS DE CONTROL TÉCNICO
   const staminaIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const isMiningRef = useRef(false); // BLOQUEO TESLA: Evita colisión de datos Cliente-Servidor
+  const isMiningRef = useRef(false);
 
-  // Inicialización del Perfil
+  // Init profile
   useEffect(() => {
     if (!isReady || !initData) return;
 
@@ -65,13 +87,29 @@ export const useGameState = () => {
         const data = await callGameApi('init-profile', initData);
         
         if (data.profile) {
+          const p = data.profile;
           setGameState({
-            energy: data.profile.energy,
-            stamina: data.profile.stamina,
-            maxStamina: data.profile.max_stamina,
-            tutorialCompleted: data.profile.tutorial_completed,
-            profileId: data.profile.id,
+            energy: p.energy,
+            stamina: p.stamina,
+            maxStamina: p.max_stamina,
+            tutorialCompleted: p.tutorial_completed,
+            profileId: p.id,
+            referralCode: p.referral_code || null,
+            referralCount: p.referral_count || 0,
+            hasReferred: !!p.referred_by,
+            dailyStreak: p.daily_streak || 0,
+            lastDailyClaim: p.last_daily_claim || null,
+            multiplier: p.multiplier || 1,
+            multiplierExpiresAt: p.multiplier_expires_at || null,
           });
+
+          // Check daily reward
+          if (!p.last_daily_claim) {
+            setDailyRewardAvailable(true);
+          } else {
+            const hoursSince = (Date.now() - new Date(p.last_daily_claim).getTime()) / (1000 * 60 * 60);
+            setDailyRewardAvailable(hoursSince >= 24);
+          }
 
           if (data.missions) {
             setMissions(prev => prev.map(m => {
@@ -98,12 +136,11 @@ export const useGameState = () => {
     initProfile();
   }, [isReady, initData]);
 
-  // Sincronización de Stamina (Regeneración Pasiva)
+  // Stamina regen sync
   useEffect(() => {
     if (!gameState.profileId || !initData) return;
 
     staminaIntervalRef.current = setInterval(async () => {
-      // Solo sincronizar si el núcleo no está en proceso de minado activo
       if (gameState.stamina < gameState.maxStamina && !isMiningRef.current) {
         try {
           const data = await callGameApi('sync-stamina', initData);
@@ -112,9 +149,7 @@ export const useGameState = () => {
             stamina: data.stamina,
             maxStamina: data.maxStamina 
           }));
-        } catch {
-          // Fallo silencioso: Reintento en el siguiente ciclo gravitatorio
-        }
+        } catch { /* silent */ }
       }
     }, 60000);
 
@@ -123,17 +158,16 @@ export const useGameState = () => {
     };
   }, [gameState.profileId, gameState.stamina, gameState.maxStamina, initData]);
 
-  // MECÁNICA DE MINADO (Torque Gravitatorio)
   const tapToroid = useCallback(async () => {
     if (gameState.stamina <= 0 || !gameState.profileId || !initData || isMiningRef.current) return false;
 
-    // Activamos bloqueo para evitar que el Sync del servidor pise el estado local
     isMiningRef.current = true;
 
-    // Update Optimista (Latencia Cero para el usuario)
+    const gain = gameState.multiplier > 1 && gameState.multiplierExpiresAt && new Date(gameState.multiplierExpiresAt) > new Date() ? gameState.multiplier : 1;
+
     setGameState(prev => ({
       ...prev,
-      energy: prev.energy + 1,
+      energy: prev.energy + gain,
       stamina: prev.stamina - 1,
     }));
 
@@ -141,16 +175,14 @@ export const useGameState = () => {
       const data = await callGameApi('tap', initData);
       
       if (!data.success) {
-        // Reversión por inconsistencia cuántica
         setGameState(prev => ({
           ...prev,
-          energy: prev.energy - 1,
+          energy: prev.energy - gain,
           stamina: prev.stamina + 1,
         }));
         return false;
       }
       
-      // Sincronización final tras el Tap
       setGameState(prev => ({
         ...prev,
         energy: data.energy,
@@ -159,18 +191,16 @@ export const useGameState = () => {
       
       return true;
     } catch {
-      // Reversión por error de red
       setGameState(prev => ({
         ...prev,
-        energy: prev.energy - 1,
+        energy: prev.energy - gain,
         stamina: prev.stamina + 1,
       }));
       return false;
     } finally {
-      // Liberamos el bloqueo para permitir regeneración pasiva
       isMiningRef.current = false;
     }
-  }, [gameState.stamina, gameState.profileId, initData]);
+  }, [gameState.stamina, gameState.profileId, gameState.multiplier, gameState.multiplierExpiresAt, initData]);
 
   const startMission = useCallback(async (missionId: string) => {
     if (!gameState.profileId || !initData) return;
@@ -212,6 +242,75 @@ export const useGameState = () => {
     } catch { /* Silent fail */ }
   }, [gameState.profileId, initData]);
 
+  // Referral
+  const applyReferral = useCallback(async (referralCode: string) => {
+    if (!initData) return { success: false, error: 'Not ready' };
+    try {
+      const data = await callGameApi('apply-referral', initData, { referralCode });
+      if (data.success) {
+        setGameState(prev => ({ 
+          ...prev, 
+          energy: prev.energy + data.energyGained,
+          hasReferred: true,
+        }));
+        return { success: true };
+      }
+      return { success: false, error: 'Failed' };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  }, [initData]);
+
+  // Daily reward
+  const claimDaily = useCallback(async () => {
+    if (!initData) return null;
+    try {
+      const data = await callGameApi('claim-daily', initData);
+      if (data.success) {
+        setGameState(prev => ({ 
+          ...prev, 
+          energy: data.energy,
+          dailyStreak: data.streak,
+          lastDailyClaim: new Date().toISOString(),
+        }));
+        setDailyRewardAvailable(false);
+        return { reward: data.reward, streak: data.streak };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }, [initData]);
+
+  // Leaderboard
+  const fetchLeaderboard = useCallback(async () => {
+    if (!initData) return;
+    try {
+      const data = await callGameApi('leaderboard', initData);
+      setLeaderboard(data.leaderboard || []);
+      setUserRank(data.userRank);
+    } catch { /* silent */ }
+  }, [initData]);
+
+  // Activate multiplier
+  const activateMultiplier = useCallback(async () => {
+    if (!initData) return false;
+    try {
+      const data = await callGameApi('buy-multiplier', initData);
+      if (data.success) {
+        setGameState(prev => ({
+          ...prev,
+          multiplier: data.multiplier,
+          multiplierExpiresAt: data.expiresAt,
+        }));
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }, [initData]);
+
   return {
     gameState,
     missions,
@@ -221,5 +320,12 @@ export const useGameState = () => {
     startMission,
     claimMission,
     completeTutorial,
+    applyReferral,
+    claimDaily,
+    dailyRewardAvailable,
+    fetchLeaderboard,
+    leaderboard,
+    userRank,
+    activateMultiplier,
   };
 };

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Send, Globe, MessageCircle, Rocket, BookOpen, FileText,
   Instagram, Facebook, Linkedin, Music, AtSign, Github, MessageSquare
@@ -29,7 +29,6 @@ const STATS = [
   { label: 'TON', sub: 'BLOCKCHAIN' },
 ];
 
-// Alphabetically sorted official channels with Lucide icons
 const SOCIAL_LINKS = [
   { name: 'Discord', icon: MessageCircle, url: '#', soon: true },
   { name: 'DoraHacks', icon: Rocket, url: 'https://dorahacks.io/org/alien69flow' },
@@ -50,13 +49,62 @@ const SOCIAL_LINKS = [
 
 const SUBTITLE_TEXT = 'ZERO-POINT ENERGY MINING · NEUTRINO PROTOCOL';
 
+// Web Audio API sound helpers
+function useHoverSound() {
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const lastPlayRef = useRef(0);
+
+  const getCtx = useCallback(() => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new AudioContext();
+    }
+    return audioCtxRef.current;
+  }, []);
+
+  const playBlip = useCallback(() => {
+    const now = Date.now();
+    if (now - lastPlayRef.current < 80) return; // debounce
+    lastPlayRef.current = now;
+    try {
+      const ctx = getCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = 600;
+      gain.gain.setValueAtTime(0.06, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.05);
+    } catch { /* silent */ }
+  }, [getCtx]);
+
+  const playWhoosh = useCallback(() => {
+    try {
+      const ctx = getCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.08, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.15);
+    } catch { /* silent */ }
+  }, [getCtx]);
+
+  return { playBlip, playWhoosh };
+}
+
 export const LandingScreen = () => {
   const [typedText, setTypedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
+  const { playBlip, playWhoosh } = useHoverSound();
 
-  // Typing effect for subtitle
   useEffect(() => {
-    const startDelay = 1200; // Start after logo/title animation
+    const startDelay = 1200;
     const typingSpeed = 40;
 
     const startTyping = setTimeout(() => {
@@ -67,7 +115,6 @@ export const LandingScreen = () => {
           currentIndex++;
         } else {
           clearInterval(typeInterval);
-          // Hide cursor after typing completes
           setTimeout(() => setShowCursor(false), 2000);
         }
       }, typingSpeed);
@@ -92,13 +139,11 @@ export const LandingScreen = () => {
 
       {/* Radar system */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        {/* Crosshairs */}
         <motion.div className="absolute w-[700px] h-px bg-primary/10" initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 1, delay: 0.2 }} />
         <motion.div className="absolute w-px h-[700px] bg-primary/10" initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={{ duration: 1, delay: 0.2 }} />
         <motion.div className="absolute w-[500px] h-px bg-primary/5 rotate-45" initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 1.2, delay: 0.4 }} />
         <motion.div className="absolute w-[500px] h-px bg-primary/5 -rotate-45" initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={{ duration: 1.2, delay: 0.4 }} />
 
-        {/* Concentric rings */}
         {RINGS.map((ring) => (
           <motion.div
             key={ring.size}
@@ -109,7 +154,6 @@ export const LandingScreen = () => {
           />
         ))}
 
-        {/* Radar sweep — circular mask */}
         <motion.div
           className="absolute rounded-full overflow-hidden"
           style={{ width: 640, height: 640 }}
@@ -125,7 +169,6 @@ export const LandingScreen = () => {
           />
         </motion.div>
 
-        {/* Afterglow pulse */}
         <motion.div
           className="absolute rounded-full border border-primary/10"
           style={{ width: 640, height: 640 }}
@@ -147,14 +190,13 @@ export const LandingScreen = () => {
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-4 px-4 max-w-md w-full">
-        {/* Logo with cinematic entrance */}
+        {/* Logo */}
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.3, type: 'spring', stiffness: 150 }}
           className="relative"
         >
-          {/* Flash effect on entrance */}
           <motion.div
             className="absolute -inset-8 rounded-full"
             style={{ background: 'radial-gradient(circle, hsl(0 0% 100% / 0.8), transparent 60%)' }}
@@ -162,7 +204,6 @@ export const LandingScreen = () => {
             animate={{ opacity: 0, scale: 2 }}
             transition={{ duration: 0.6, delay: 0.3 }}
           />
-          {/* Expanding ripple */}
           <motion.div
             className="absolute -inset-4 rounded-full border-2 border-primary"
             initial={{ scale: 0.8, opacity: 1 }}
@@ -185,7 +226,7 @@ export const LandingScreen = () => {
           </div>
         </motion.div>
 
-        {/* Title with glitch effect */}
+        {/* Title */}
         <div className="text-center">
           <h1
             className="glitch text-5xl md:text-7xl font-black text-primary tracking-[0.12em]"
@@ -193,7 +234,6 @@ export const LandingScreen = () => {
           >
             ALIENFLOW
           </h1>
-          {/* Subtitle with typing effect */}
           <p
             className="text-[10px] md:text-xs text-muted-foreground mt-2 tracking-[0.2em] uppercase h-4"
             style={{ fontFamily: "'Rajdhani', sans-serif" }}
@@ -237,6 +277,7 @@ export const LandingScreen = () => {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 2.2, duration: 0.6, type: 'spring', stiffness: 120 }}
           className="relative group w-full max-w-xs"
+          onMouseEnter={playWhoosh}
         >
           <motion.div
             className="absolute -inset-3 rounded-2xl blur-2xl"
@@ -265,7 +306,7 @@ export const LandingScreen = () => {
           </div>
         </motion.a>
 
-        {/* Social Links Grid - Alphabetical with Lucide Icons */}
+        {/* Social Links Grid */}
         <div className="grid grid-cols-5 max-[360px]:grid-cols-4 gap-2 mt-2 w-full max-w-sm">
           {SOCIAL_LINKS.map((social, index) => {
             const IconComponent = social.icon;
@@ -280,6 +321,7 @@ export const LandingScreen = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 2.6 + index * 0.05, duration: 0.35 }}
                 whileHover={social.soon ? {} : { scale: 1.15 }}
+                onMouseEnter={social.soon ? undefined : playBlip}
                 className={`
                   flex flex-col items-center gap-0.5 p-2 rounded-lg transition-all duration-200
                   ${social.soon 

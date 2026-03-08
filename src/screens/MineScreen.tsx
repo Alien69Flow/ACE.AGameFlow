@@ -1,20 +1,25 @@
 import { motion } from 'framer-motion';
-import { ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft, Zap, Star, Clock } from 'lucide-react';
 import { Toroid } from '@/components/game/Toroid';
 import { getTutorialHighlight } from '@/components/game/Tutorial';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
-import { ENERGY_PACKS, DAO_WALLET_ADDRESS, toNano } from '@/lib/payments';
+import { ENERGY_PACKS, MULTIPLIER_PACKS, DAO_WALLET_ADDRESS, toNano } from '@/lib/payments';
 
 interface MineScreenProps {
   onTap: () => Promise<boolean>;
   onBack: () => void;
   stamina: number;
   tutorialStep: number | null;
+  multiplier: number;
+  multiplierExpiresAt: string | null;
+  onActivateMultiplier: () => Promise<boolean>;
 }
 
-export const MineScreen = ({ onTap, onBack, stamina, tutorialStep }: MineScreenProps) => {
+export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, multiplierExpiresAt, onActivateMultiplier }: MineScreenProps) => {
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [tonConnectUI] = useTonConnectUI();
+
+  const isMultiplierActive = multiplier > 1 && multiplierExpiresAt && new Date(multiplierExpiresAt) > new Date();
 
   const handleBuyPack = async (priceTon: string) => {
     try {
@@ -27,6 +32,24 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep }: MineScreenP
           },
         ],
       });
+    } catch (e) {
+      console.error('Transaction failed:', e);
+    }
+  };
+
+  const handleBuyMultiplier = async (priceTon: string) => {
+    try {
+      await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now() / 1000) + 600,
+        messages: [
+          {
+            address: DAO_WALLET_ADDRESS,
+            amount: toNano(priceTon),
+          },
+        ],
+      });
+      // Activate on server after payment
+      await onActivateMultiplier();
     } catch (e) {
       console.error('Transaction failed:', e);
     }
@@ -67,6 +90,16 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep }: MineScreenP
         <p className="font-body text-xs text-muted-foreground">
           Toroide Gravitatorio Nivel 1
         </p>
+        {isMultiplierActive && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full bg-secondary/20 border border-secondary/40"
+          >
+            <Star className="w-3 h-3 text-secondary" />
+            <span className="font-display text-[10px] text-secondary text-glow-gold">{multiplier}× ACTIVO</span>
+          </motion.div>
+        )}
       </motion.div>
 
       {/* Toroid */}
@@ -105,11 +138,19 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep }: MineScreenP
             <motion.button
               key={pack.id}
               onClick={() => handleBuyPack(pack.priceTon)}
-              className="flex flex-col items-center gap-1 p-3 rounded-xl border border-secondary/30 bg-card/80 
-                         hover:border-secondary/60 hover:bg-secondary/5 transition-all duration-200"
+              className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all duration-200
+                ${pack.featured 
+                  ? 'border-secondary/60 bg-secondary/5 hover:bg-secondary/10 relative' 
+                  : 'border-secondary/30 bg-card/80 hover:border-secondary/60 hover:bg-secondary/5'
+                }`}
               whileTap={{ scale: 0.95 }}
             >
-              <Zap className="w-5 h-5 text-secondary" />
+              {pack.featured && (
+                <span className="absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-display font-bold text-background bg-secondary px-2 py-0.5 rounded-full">
+                  BEST VALUE
+                </span>
+              )}
+              <Zap className={`w-5 h-5 ${pack.featured ? 'text-secondary' : 'text-secondary/70'}`} />
               <span className="font-display text-[10px] font-bold text-secondary text-glow-gold">
                 {pack.name}
               </span>
@@ -122,6 +163,40 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep }: MineScreenP
             </motion.button>
           ))}
         </div>
+
+        {/* Multiplier Section */}
+        {!isMultiplierActive && (
+          <>
+            <h2 className="font-display text-sm font-bold text-primary text-glow text-center mt-4">
+              🚀 BOOST DE ENERGÍA
+            </h2>
+            <div className="grid grid-cols-1 gap-2">
+              {MULTIPLIER_PACKS.map((pack) => (
+                <motion.button
+                  key={pack.id}
+                  onClick={() => handleBuyMultiplier(pack.priceTon)}
+                  className="flex items-center justify-between gap-3 p-3 rounded-xl border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-all duration-200"
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <div className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-primary" />
+                    <div className="text-left">
+                      <span className="font-display text-sm font-bold text-primary text-glow block">
+                        {pack.name}
+                      </span>
+                      <span className="font-body text-[10px] text-muted-foreground flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {pack.durationHours}h · Duplica tu minado
+                      </span>
+                    </div>
+                  </div>
+                  <span className="font-display text-sm font-bold text-foreground">
+                    {pack.priceTon} TON
+                  </span>
+                </motion.button>
+              ))}
+            </div>
+          </>
+        )}
       </motion.div>
 
       {/* Background effects */}
