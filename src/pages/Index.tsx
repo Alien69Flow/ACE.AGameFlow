@@ -32,7 +32,14 @@ const Index = () => {
     tapToroid, 
     startMission, 
     claimMission, 
-    completeTutorial 
+    completeTutorial,
+    applyReferral,
+    claimDaily,
+    dailyRewardAvailable,
+    fetchLeaderboard,
+    leaderboard,
+    userRank,
+    activateMultiplier,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
@@ -136,7 +143,9 @@ const Index = () => {
       <StaminaBar 
         stamina={gameState.stamina} 
         maxStamina={gameState.maxStamina} 
-        energy={gameState.energy} 
+        energy={gameState.energy}
+        multiplier={gameState.multiplier}
+        multiplierExpiresAt={gameState.multiplierExpiresAt}
       />
 
       {/* Main Content */}
@@ -145,7 +154,10 @@ const Index = () => {
           <PlanetScreen 
             key="planet"
             onEnterMine={handleEnterMine} 
-            tutorialStep={tutorialStep} 
+            tutorialStep={tutorialStep}
+            dailyRewardAvailable={dailyRewardAvailable}
+            dailyStreak={gameState.dailyStreak}
+            onClaimDaily={claimDaily}
           />
         )}
         {currentScreen === 'mine' && (
@@ -155,6 +167,9 @@ const Index = () => {
             onBack={() => handleNavigate('planet')}
             stamina={gameState.stamina}
             tutorialStep={tutorialStep}
+            multiplier={gameState.multiplier}
+            multiplierExpiresAt={gameState.multiplierExpiresAt}
+            onActivateMultiplier={activateMultiplier}
           />
         )}
         {currentScreen === 'network' && (
@@ -164,6 +179,13 @@ const Index = () => {
             onStartMission={handleStartMission}
             onClaimMission={handleClaimMission}
             openLink={openLink}
+            referralCode={gameState.referralCode}
+            referralCount={gameState.referralCount}
+            hasReferred={gameState.hasReferred}
+            onApplyReferral={applyReferral}
+            leaderboard={leaderboard}
+            userRank={userRank}
+            onFetchLeaderboard={fetchLeaderboard}
           />
         )}
       </AnimatePresence>
