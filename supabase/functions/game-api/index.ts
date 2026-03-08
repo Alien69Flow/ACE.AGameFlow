@@ -1103,6 +1103,108 @@ Deno.serve(async (req) => {
         );
       }
       
+      case 'verify-mission': {
+        const body = await req.json();
+        const { missionId, verifyType } = body;
+
+        if (!missionId || !verifyType) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid request' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (verifyType === 'telegram_channel') {
+          // Map mission IDs to chat IDs
+          const channelMap: Record<string, string> = {
+            'tg_channel': '@AlienFlow',
+            'tg_group': '@AlienFlowChat',
+          };
+          
+          const chatId = channelMap[missionId];
+          if (!chatId) {
+            return new Response(
+              JSON.stringify({ verified: false, error: 'Unknown channel' }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          try {
+            const tgResponse = await fetch(
+              `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(chatId)}&user_id=${telegramUserId}`
+            );
+            const tgData = await tgResponse.json();
+
+            if (tgData.ok) {
+              const status = tgData.result?.status;
+              const isMember = ['member', 'administrator', 'creator'].includes(status);
+              
+              if (isMember) {
+                // Auto-complete the mission
+                const now = new Date().toISOString();
+                await supabase
+                  .from('missions_completed')
+                  .upsert({
+                    profile_id: profile.id,
+                    mission_id: missionId,
+                    started_at: now,
+                    completed_at: now,
+                  }, { onConflict: 'profile_id,mission_id' });
+
+                return new Response(
+                  JSON.stringify({ verified: true }),
+                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+              } else {
+                return new Response(
+                  JSON.stringify({ verified: false, error: 'No eres miembro del canal. Únete primero.' }),
+                  { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                );
+              }
+            } else {
+              console.error('Telegram API error:', tgData.description);
+              return new Response(
+                JSON.stringify({ verified: false, error: 'Error al verificar. Inténtalo de nuevo.' }),
+                { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              );
+            }
+          } catch (err) {
+            console.error('Telegram verify error:', err);
+            return new Response(
+              JSON.stringify({ verified: false, error: 'Error de conexión' }),
+              { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+
+        if (verifyType === 'x_follow') {
+          // X verification requires API keys - not yet configured
+          // Fall through to time-based verification
+          return new Response(
+            JSON.stringify({ verified: false, error: 'Verificación de X próximamente. Usa verificación por tiempo.' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ verified: false, error: 'Unknown verify type' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       default:
         return new Response(
           JSON.stringify({ error: 'Not found' }),
