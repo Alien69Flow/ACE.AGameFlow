@@ -470,6 +470,47 @@ export const useGameState = () => {
     }
   }, [initData]);
 
+  // Lucky wheel
+  const [canSpinFree, setCanSpinFree] = useState(false);
+
+  // Fetch wheel status on init
+  useEffect(() => {
+    if (!initData || !gameState.profileId) return;
+    const checkWheelStatus = async () => {
+      try {
+        const data = await callGameApi('get-wheel-status', initData);
+        setCanSpinFree(data.canSpinFree);
+      } catch { /* silent */ }
+    };
+    checkWheelStatus();
+  }, [initData, gameState.profileId]);
+
+  const spinWheel = useCallback(async () => {
+    if (!initData) return { prize: null, canSpinFree: false, error: 'Not ready' };
+    try {
+      const data = await callGameApi('spin-wheel', initData);
+      if (data.success) {
+        setGameState(prev => ({ ...prev, energy: data.newEnergy }));
+        setCanSpinFree(data.canSpinFree);
+        return { prize: data.prize, canSpinFree: data.canSpinFree };
+      }
+      return { prize: null, canSpinFree: data.canSpinFree ?? false, error: data.error };
+    } catch (e: unknown) {
+      return { prize: null, canSpinFree: false, error: e instanceof Error ? e.message : 'Error' };
+    }
+  }, [initData]);
+
+  // Friends list
+  const [friends, setFriends] = useState<{ username: string | null; energy: number; last_seen_at: string }[]>([]);
+
+  const fetchFriends = useCallback(async () => {
+    if (!initData) return;
+    try {
+      const data = await callGameApi('get-friends', initData);
+      setFriends(data.friends || []);
+    } catch { /* silent */ }
+  }, [initData]);
+
   return {
     gameState,
     missions,
@@ -497,5 +538,9 @@ export const useGameState = () => {
     fetchClanLeaderboard,
     clanLeaderboard,
     verifyMission,
+    spinWheel,
+    canSpinFree,
+    friends,
+    fetchFriends,
   };
 };

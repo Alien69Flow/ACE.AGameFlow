@@ -160,6 +160,33 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
         ))}
       </div>
 
+      {/* Lucky Wheel Floating Button */}
+      <motion.button
+        onClick={() => setShowWheel(true)}
+        className={`absolute bottom-24 right-4 p-3 rounded-full border-2 transition-all z-20
+          ${canSpinFree 
+            ? 'bg-secondary/20 border-secondary text-secondary animate-pulse' 
+            : 'bg-card/80 border-muted-foreground/30 text-muted-foreground'
+          }`}
+        whileTap={{ scale: 0.9 }}
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        <Sparkles className="w-6 h-6" />
+        {canSpinFree && (
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-secondary rounded-full animate-ping" />
+        )}
+      </motion.button>
+
+      {/* Lucky Wheel Modal */}
+      <LuckyWheel
+        isOpen={showWheel}
+        onClose={() => setShowWheel(false)}
+        onSpin={onSpinWheel}
+        canSpinFree={canSpinFree}
+      />
+
       {/* Particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {[...Array(20)].map((_, i) => (
