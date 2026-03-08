@@ -228,6 +228,34 @@ const Index = () => {
         )}
       </AnimatePresence>
 
+      {/* Achievement Toast */}
+      <AnimatePresence>
+        {newAchievementQueue.length > 0 && (
+          <motion.div
+            key={newAchievementQueue[0].id}
+            initial={{ y: -80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -80, opacity: 0 }}
+            className="fixed top-20 left-4 right-4 z-[70]"
+          >
+            <motion.div
+              className="bg-card border border-secondary/50 rounded-xl p-3 box-glow-gold flex items-center gap-3 cursor-pointer"
+              onClick={dismissAchievementNotification}
+            >
+              <span className="text-2xl">{newAchievementQueue[0].icon}</span>
+              <div className="flex-1">
+                <span className="font-display text-xs text-secondary block">🏆 LOGRO DESBLOQUEADO</span>
+                <span className="font-display text-sm font-bold text-foreground">{newAchievementQueue[0].name}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Trophy className="w-4 h-4 text-secondary" />
+                <span className="font-display text-xs text-secondary">+{newAchievementQueue[0].reward}</span>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Content */}
       <AnimatePresence mode="wait">
         {currentScreen === 'planet' && (
