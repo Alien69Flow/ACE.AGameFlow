@@ -1,78 +1,100 @@
 
+# 🌍 AlienFlow - Telegram Mini App
 
-## Plan: Final Polish Pass — Performance, UX, and Launch Quality
-
-After reviewing every file in depth, here are the concrete improvements to ship a polished v1:
-
----
-
-### 1. Auto-Dismiss Achievement Toast (4 seconds)
-Currently the achievement notification stays until manually tapped. Add a `useEffect` with a 4-second timer that auto-calls `dismissAchievementNotification`.
-
-**File:** `src/pages/Index.tsx`
+## Visión General
+Una experiencia de minería de Energía Punto Cero con estética **Greenpunk/Solarpunk**. El usuario es un "Alien" que extrae energía del núcleo de la Tierra a través de un Toroide gravitatorio.
 
 ---
 
-### 2. Throttle Achievement Checks on Tap (Performance Critical)
-`checkAchievements()` runs 4 DB queries on **every single tap** — this will crush the backend under load. Change the tap endpoint to only run achievement checks every 10th tap (using `energy % 10 === 0`).
-
-**File:** `supabase/functions/game-api/index.ts` (tap case, ~line 437)
-
----
-
-### 3. Client-Side Tap Queue Protection
-The `isMiningRef` flag prevents concurrent taps, but rapid taps can still queue up. Add a 150ms cooldown on the client to prevent unnecessary API calls that will just get rate-limited.
-
-**File:** `src/hooks/useGameState.ts` (tapToroid callback)
+## 🎨 Diseño Visual
+- **Paleta**: Fondo #000 (negro profundo), Verde Neón #39FF14, Oro Tesla #D4AF37
+- **Estilo**: Cinematográfico, futurista, con brillos, halos y partículas flotantes
+- **Tipografía**: Sans-serif futurista con efectos de brillo neón
 
 ---
 
-### 4. Error Toast Feedback
-Currently most API failures are silently swallowed. Add user-facing toast notifications for critical failures: tap rate-limited, mission claim failed, upgrade purchase failed, spin failed.
+## 📱 Pantallas
 
-**Files:** `src/hooks/useGameState.ts`, using existing `sonner` toast
+### 1. PLANETA (Pantalla Principal)
+- **Tierra 3D** central rotando con Three.js (texturas realistas, nubes, atmósfera brillante)
+- **6 slots hexagonales** orbitando alrededor:
+  - Slot 1: "Core Mina" — Estilo Solarpunk con animación de actividad
+  - Slots 2-6: Bloqueados con candado dorado animado
+- **Tutorial inicial**: Overlay Greenpunk con pasos guiados y tooltips animados
+
+### 2. MINA
+- **Toroide central** con animaciones 2D premium en Framer Motion:
+  - Flujo gravitatorio continuo con partículas verde neón
+  - Pulso magnético al ritmo del tap
+  - Ondas expansivas al extraer energía
+- **Interacción**: Tap = +1 Energía, -1 Stamina, vibración visual y efecto de sonido
+- **Indicadores**: Contador de Energía y barra de Stamina visibles
+
+### 3. RED (Conexiones Sociales)
+- **Botón "Conectar Wallet TON"** prominente (funcionalidad preparada para futuro)
+- **Sección Misiones** (+50 Energía cada una):
+  - Facebook, Instagram, LinkedIn, Telegram, X (Twitter) — Orden alfabético
+  - Flujo: Clic → Abre enlace → Al volver, "Verificando..." (33s) → "Reclamar Recompensa"
+- **Sección Ecosistema** (orden alfabético):
+  - AlienFlow DAO, Discord (Coming Soon), Email, GitBook, GitHub, LinkedIn Personal, Reddit, Threads, TikTok (Coming Soon)
+- **Sección Legado**: 2 colecciones de OpenSea NFTs
 
 ---
 
-### 5. Haptic Feedback on Key Actions
-Add haptic feedback to: wheel spin result, achievement claim, daily reward claim, upgrade purchase. Currently only tap and mission claim have it.
+## ⚙️ Mecánicas de Juego
 
-**Files:** `src/screens/PlanetScreen.tsx`, `src/screens/UpgradesScreen.tsx`, `src/components/game/LuckyWheel.tsx`
+### Stamina
+- Máximo: 100 puntos
+- Recarga: +1 cada 60 segundos automáticamente
+- Persistencia en Supabase (sincronizado entre dispositivos)
 
----
+### Energía Punto Cero
+- Contador acumulativo sin límite
+- Se gana: +1 por tap en Toroide, +50 por misión completada
+- Sincronizado en la nube via Supabase
 
-### 6. Loading Skeletons for Tabs
-The Leaderboard, Achievements, and Friends tabs show "Cargando..." text. Replace with skeleton pulse animations matching the card layout for a more polished feel.
-
-**File:** `src/screens/NetworkScreen.tsx`
-
----
-
-### 7. Version Bump + Landing Polish
-Update `ALIENFLOW v0.1` to `v1.0` on the landing page. This is a small but important signal for launch.
-
-**File:** `src/components/game/LandingScreen.tsx` (line 373)
+### Verificación de Misiones
+- Sistema de "Verificación con Retraso Simulado"
+- Contador de 33 segundos post-visita antes de poder reclamar
+- Estado guardado en Supabase para evitar repetición
 
 ---
 
-### Summary of Changes
+## 🎵 Audio Inmersivo
+- **Música ambiental** Solarpunk/electrónica orgánica (loop continuo, toggleable)
+- **Efectos de sonido**:
+  - Tap en Toroide: pulso energético
+  - Misión completada: tono de logro
+  - Navegación: transiciones suaves
+  - Tutorial: notificaciones sutiles
 
-| File | Change |
-|---|---|
-| `src/pages/Index.tsx` | Achievement toast auto-dismiss timer |
-| `supabase/functions/game-api/index.ts` | Throttle achievement checks (every 10th tap) |
-| `src/hooks/useGameState.ts` | Tap cooldown (150ms), error toasts via sonner |
-| `src/screens/NetworkScreen.tsx` | Skeleton loading states for tabs |
-| `src/screens/PlanetScreen.tsx` | Haptic on daily claim |
-| `src/screens/UpgradesScreen.tsx` | Haptic on upgrade purchase |
-| `src/components/game/LuckyWheel.tsx` | Haptic on spin result |
-| `src/components/game/LandingScreen.tsx` | Version bump to v1.0 |
+---
 
-### Implementation Order
-1. Achievement toast auto-dismiss
-2. Tap throttling (server + client)
-3. Error toasts
-4. Haptic feedback additions
-5. Skeleton loading states
-6. Version bump
+## 🔧 Integraciones Técnicas
 
+### Telegram Mini App
+- SDK oficial de Telegram WebApp
+- `window.Telegram.WebApp.expand()` para pantalla completa
+- Todos los enlaces abren en ventana nueva
+
+### Backend (Supabase)
+- **Tablas**: usuarios, stamina, energía, misiones_completadas
+- **Autenticación**: Via Telegram user_id
+- **Sincronización**: Tiempo real para progreso entre dispositivos
+- **Edge Functions**: Para audio (ElevenLabs) y validaciones
+
+### Tecnologías Frontend
+- React + TypeScript + Vite
+- Three.js + @react-three/fiber (Tierra 3D)
+- Framer Motion (Toroide y animaciones UI)
+- Tailwind CSS (estilos Greenpunk)
+
+---
+
+## 📋 Sistema de Tutorial
+
+1. **Paso 1**: "Bienvenido Alien. Este es el Planeta Tierra Nivel 0."
+2. **Paso 2**: "Pulsa en la Core Mina para entrar al núcleo de energía."
+3. **Paso 3**: "En la Mina, pulsa el Toroide para extraer Energía Punto Cero."
+
+Cada paso con overlay oscuro, spotlight en el elemento relevante, y animación de siguiente paso.

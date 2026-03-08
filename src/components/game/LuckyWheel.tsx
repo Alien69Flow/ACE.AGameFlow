@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { X, Sparkles, Zap, Star, Clock } from 'lucide-react';
+import { useTelegram } from '@/hooks/useTelegram';
 
 interface Prize {
   id: string;
@@ -30,6 +31,7 @@ interface LuckyWheelProps {
 }
 
 export const LuckyWheel = ({ isOpen, onClose, onSpin, canSpinFree }: LuckyWheelProps) => {
+  const { hapticFeedback } = useTelegram();
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<Prize | null>(null);
@@ -73,6 +75,7 @@ export const LuckyWheel = ({ isOpen, onClose, onSpin, canSpinFree }: LuckyWheelP
         setResult(PRIZES[prizeIndex]);
         setShowResult(true);
         setIsSpinning(false);
+        hapticFeedback('heavy');
       }, 4000);
     } catch {
       setIsSpinning(false);

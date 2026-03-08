@@ -5,6 +5,7 @@ import { HexSlot } from '@/components/game/HexSlot';
 import { getTutorialHighlight } from '@/components/game/Tutorial';
 import { LuckyWheel } from '@/components/game/LuckyWheel';
 import { Gift, Zap, Flame, Sparkles } from 'lucide-react';
+import { useTelegram } from '@/hooks/useTelegram';
 
 interface PlanetScreenProps {
   onEnterMine: () => void;
@@ -26,6 +27,7 @@ const slots = [
 ];
 
 export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily, onSpinWheel, canSpinFree }: PlanetScreenProps) => {
+  const { hapticFeedback } = useTelegram();
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [showDailyModal, setShowDailyModal] = useState(dailyRewardAvailable);
   const [claimResult, setClaimResult] = useState<{ reward: number; streak: number } | null>(null);
@@ -37,6 +39,7 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
     const result = await onClaimDaily();
     if (result) {
       setClaimResult(result);
+      hapticFeedback('heavy');
     }
     setClaiming(false);
   };

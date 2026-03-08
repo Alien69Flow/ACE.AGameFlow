@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
 import { Zap, Battery, Clock, MousePointerClick, TrendingUp, Lock } from 'lucide-react';
+import { useTelegram } from '@/hooks/useTelegram';
 
 interface UpgradeInfo {
   type: string;
@@ -26,6 +27,7 @@ const UPGRADE_META: Record<string, { icon: typeof Zap; label: string; unit: stri
 };
 
 export const UpgradesScreen = ({ energy, onFetchUpgrades, onBuyUpgrade }: UpgradesScreenProps) => {
+  const { hapticFeedback } = useTelegram();
   const [upgrades, setUpgrades] = useState<UpgradeInfo[]>([]);
   const [currentEnergy, setCurrentEnergy] = useState(energy);
   const [buying, setBuying] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export const UpgradesScreen = ({ energy, onFetchUpgrades, onBuyUpgrade }: Upgrad
     setBuying(type);
     const result = await onBuyUpgrade(type);
     if (result?.success) {
+      hapticFeedback('medium');
       await fetchData();
     }
     setBuying(null);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTelegram } from './useTelegram';
+import { toast } from 'sonner';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
@@ -225,7 +226,13 @@ export const useGameState = () => {
     };
   }, [gameState.profileId, gameState.stamina, gameState.maxStamina, initData]);
 
+  const lastTapTimeRef = useRef(0);
+
   const tapToroid = useCallback(async () => {
+    const now = Date.now();
+    if (now - lastTapTimeRef.current < 150) return false; // 150ms cooldown
+    lastTapTimeRef.current = now;
+
     if (gameState.stamina <= 0 || !gameState.profileId || !initData || isMiningRef.current) return false;
 
     isMiningRef.current = true;
@@ -247,6 +254,7 @@ export const useGameState = () => {
           energy: prev.energy - gain,
           stamina: prev.stamina + 1,
         }));
+        if (data.error?.includes('Rate')) toast.error('⚡ Demasiado rápido, espera un momento');
         return false;
       }
       
@@ -276,8 +284,8 @@ export const useGameState = () => {
       setMissions(prev => prev.map(m => 
         m.id === missionId ? { ...m, startedAt: new Date(data.startedAt) } : m
       ));
-    } catch (error) {
-      console.error('Misión fallida');
+    } catch {
+      toast.error('❌ No se pudo iniciar la misión');
     }
   }, [gameState.profileId, initData]);
 
@@ -295,8 +303,10 @@ export const useGameState = () => {
         ));
         return true;
       }
+      toast.error('❌ No se pudo reclamar la misión');
       return false;
     } catch {
+      toast.error('❌ Error al reclamar misión');
       return false;
     }
   }, [gameState.profileId, missions, initData]);
@@ -372,8 +382,10 @@ export const useGameState = () => {
         }));
         return true;
       }
+      toast.error('❌ No se pudo activar el multiplicador');
       return false;
     } catch {
+      toast.error('❌ Error al activar multiplicador');
       return false;
     }
   }, [initData]);
@@ -415,8 +427,10 @@ export const useGameState = () => {
         }
         return data;
       }
+      toast.error('❌ No se pudo comprar la mejora');
       return null;
     } catch {
+      toast.error('❌ Error al comprar mejora');
       return null;
     }
   }, [initData]);

@@ -433,8 +433,11 @@ Deno.serve(async (req) => {
           );
         }
         
-        // Check achievements after tap
-        const newAchievements = await checkAchievements(supabase, profile.id);
+        // Check achievements every 10th tap to reduce DB load
+        let newAchievements: Awaited<ReturnType<typeof checkAchievements>> = [];
+        if (updatedProfile[0].energy % 10 === 0) {
+          newAchievements = await checkAchievements(supabase, profile.id);
+        }
 
         return new Response(
           JSON.stringify({ 

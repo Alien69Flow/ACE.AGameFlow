@@ -370,7 +370,7 @@ export const LandingScreen = () => {
           className="text-[8px] text-muted-foreground/40 text-center tracking-[0.2em] mt-1"
           style={{ fontFamily: "'Rajdhani', sans-serif" }}
         >
-          ALIENFLOW v0.1 · TON BLOCKCHAIN · DAO POWERED
+          ALIENFLOW v1.0 · TON BLOCKCHAIN · DAO POWERED
         </motion.p>
       </div>
     </div>
