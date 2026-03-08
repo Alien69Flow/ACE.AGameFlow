@@ -231,6 +231,8 @@ const Index = () => {
             dailyRewardAvailable={dailyRewardAvailable}
             dailyStreak={gameState.dailyStreak}
             onClaimDaily={claimDaily}
+            onSpinWheel={spinWheel}
+            canSpinFree={canSpinFree}
           />
         )}
         {currentScreen === 'mine' && (
