@@ -17,11 +17,15 @@ import { Zap } from 'lucide-react';
 type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop';
 
 const MISSIONS = [
-  { id: 'facebook', name: 'Facebook', url: 'https://www.facebook.com/Alien69Flow', icon: '📘', reward: 50 },
-  { id: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/alien69flow/', icon: '📸', reward: 50 },
-  { id: 'linkedin', name: 'LinkedIn', url: 'https://linkedin.com/company/alienflowspace', icon: '💼', reward: 50 },
-  { id: 'telegram', name: 'Telegram', url: 'https://t.me/AlienFlow', icon: '✈️', reward: 50 },
-  { id: 'twitter', name: 'X (Twitter)', url: 'https://x.com/alien69flow', icon: '🐦', reward: 50 },
+  // Auto-verified missions (double reward)
+  { id: 'tg_channel', name: 'Unirse al Canal', url: 'https://t.me/AlienFlow', icon: '✈️', reward: 100, verifiable: true, verifyType: 'telegram_channel' as const },
+  { id: 'tg_group', name: 'Unirse al Grupo', url: 'https://t.me/AlienFlowChat', icon: '💬', reward: 100, verifiable: true, verifyType: 'telegram_channel' as const },
+  { id: 'x_follow', name: 'Seguir en X', url: 'https://x.com/alien69flow', icon: '🐦', reward: 100, verifiable: true, verifyType: 'x_follow' as const },
+  // Standard missions
+  { id: 'facebook', name: 'Facebook', url: 'https://www.facebook.com/Alien69Flow', icon: '📘', reward: 50, verifiable: false, verifyType: null },
+  { id: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/alien69flow/', icon: '📸', reward: 50, verifiable: false, verifyType: null },
+  { id: 'linkedin', name: 'LinkedIn', url: 'https://linkedin.com/company/alienflowspace', icon: '💼', reward: 50, verifiable: false, verifyType: null },
+  { id: 'twitter', name: 'X (Twitter)', url: 'https://x.com/alien69flow', icon: '🐦', reward: 50, verifiable: false, verifyType: null },
 ];
 
 const Index = () => {
@@ -52,6 +56,7 @@ const Index = () => {
     leaveClan,
     fetchClanLeaderboard,
     clanLeaderboard,
+    verifyMission,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
@@ -250,6 +255,7 @@ const Index = () => {
             missions={missions}
             onStartMission={handleStartMission}
             onClaimMission={handleClaimMission}
+            onVerifyMission={verifyMission}
             openLink={openLink}
             referralCode={gameState.referralCode}
             referralCount={gameState.referralCount}
