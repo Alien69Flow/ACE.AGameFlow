@@ -720,8 +720,10 @@ Deno.serve(async (req) => {
           .update({ energy: referrer.energy + 100, referral_count: referrer.referral_count + 1 })
           .eq('id', referrer.id);
 
+        const newAchievementsRef = await checkAchievements(supabase, profile.id);
+
         return new Response(
-          JSON.stringify({ success: true, energyGained: 50 }),
+          JSON.stringify({ success: true, energyGained: 50, newAchievements: newAchievementsRef }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
