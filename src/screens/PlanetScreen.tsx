@@ -27,6 +27,7 @@ const slots = [
 ];
 
 export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily, onSpinWheel, canSpinFree }: PlanetScreenProps) => {
+  const { hapticFeedback } = useTelegram();
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [showDailyModal, setShowDailyModal] = useState(dailyRewardAvailable);
   const [claimResult, setClaimResult] = useState<{ reward: number; streak: number } | null>(null);
