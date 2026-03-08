@@ -771,8 +771,10 @@ Deno.serve(async (req) => {
           .update({ energy: newEnergy, last_daily_claim: now.toISOString(), daily_streak: newStreak })
           .eq('id', profile.id);
 
+        const newAchievementsDaily = await checkAchievements(supabase, profile.id);
+
         return new Response(
-          JSON.stringify({ success: true, reward, streak: newStreak, energy: newEnergy }),
+          JSON.stringify({ success: true, reward, streak: newStreak, energy: newEnergy, newAchievements: newAchievementsDaily }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
