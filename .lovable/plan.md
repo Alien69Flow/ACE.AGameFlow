@@ -1,100 +1,61 @@
 
-# 🌍 AlienFlow - Telegram Mini App
 
-## Visión General
-Una experiencia de minería de Energía Punto Cero con estética **Greenpunk/Solarpunk**. El usuario es un "Alien" que extrae energía del núcleo de la Tierra a través de un Toroide gravitatorio.
+## Plan: Platform Detection Landing + UI Refactoring + Wallet Integration
 
----
+### Problem
+Currently the app stays stuck loading when opened outside Telegram (`isReady` stays false). The Network screen doesn't scroll properly, missions are simulated, navigation tabs could be more compact, and the wallet connect button is on the wrong screen.
 
-## 🎨 Diseño Visual
-- **Paleta**: Fondo #000 (negro profundo), Verde Neón #39FF14, Oro Tesla #D4AF37
-- **Estilo**: Cinematográfico, futurista, con brillos, halos y partículas flotantes
-- **Tipografía**: Sans-serif futurista con efectos de brillo neón
+### Changes
 
----
+#### 1. Platform Detection & Landing Page
+**File: `src/hooks/useTelegram.ts`**
+- Add `isTelegram` state that detects `window.Telegram?.WebApp` presence
+- When NOT in Telegram: set `isReady = true` but `initData = null` so the app can render
 
-## 📱 Pantallas
+**File: `src/pages/Index.tsx`**
+- When `!isTelegram` (no Telegram WebApp detected), render a full-screen **Landing State** instead of the game:
+  - Black background with animated radar/scan effect (CSS radial animation)
+  - AlienFlow logo/title with neon glow
+  - Large neon-green pulsing button: **"INITIALIZE NEUTRINO LINK (TELEGRAM)"**
+  - Deep link: `https://t.me/Alien69Bot` (opens Telegram bot to launch miniapp)
+  - Subtle particle background reusing existing animation patterns
 
-### 1. PLANETA (Pantalla Principal)
-- **Tierra 3D** central rotando con Three.js (texturas realistas, nubes, atmósfera brillante)
-- **6 slots hexagonales** orbitando alrededor:
-  - Slot 1: "Core Mina" — Estilo Solarpunk con animación de actividad
-  - Slots 2-6: Bloqueados con candado dorado animado
-- **Tutorial inicial**: Overlay Greenpunk con pasos guiados y tooltips animados
+#### 2. Navigation Refactoring
+**File: `src/components/game/Navigation.tsx`**
+- Rename tabs: `Planeta` → `Energía`, keep `Mina`, `Red` → `Referidos`
+- Make tabs more compact: reduce padding, smaller icons/text
+- Move mute button inline as a small icon at the edge
 
-### 2. MINA
-- **Toroide central** con animaciones 2D premium en Framer Motion:
-  - Flujo gravitatorio continuo con partículas verde neón
-  - Pulso magnético al ritmo del tap
-  - Ondas expansivas al extraer energía
-- **Interacción**: Tap = +1 Energía, -1 Stamina, vibración visual y efecto de sonido
-- **Indicadores**: Contador de Energía y barra de Stamina visibles
+#### 3. Network Screen Fix (scroll + real missions)
+**File: `src/screens/NetworkScreen.tsx`**
+- Fix scroll: ensure `overflow-y-auto` works by removing `overflow-hidden` from parent containers
+- Keep the 33-second verification system (missions are server-validated via edge function)
+- Add proper padding at bottom for nav clearance
+- Move `TonConnectButton` out of this screen (goes to Mine)
 
-### 3. RED (Conexiones Sociales)
-- **Botón "Conectar Wallet TON"** prominente (funcionalidad preparada para futuro)
-- **Sección Misiones** (+50 Energía cada una):
-  - Facebook, Instagram, LinkedIn, Telegram, X (Twitter) — Orden alfabético
-  - Flujo: Clic → Abre enlace → Al volver, "Verificando..." (33s) → "Reclamar Recompensa"
-- **Sección Ecosistema** (orden alfabético):
-  - AlienFlow DAO, Discord (Coming Soon), Email, GitBook, GitHub, LinkedIn Personal, Reddit, Threads, TikTok (Coming Soon)
-- **Sección Legado**: 2 colecciones de OpenSea NFTs
+#### 4. Wallet Integration in Mine Screen
+**File: `src/screens/MineScreen.tsx`**
+- Add `TonConnectButton` prominently
+- Add energy pack purchase UI using `ENERGY_PACKS` from `src/lib/payments.ts`
+- Show cards for Flux Starter (0.1 TON), Tesla Burst (0.4 TON), Void Core (1.2 TON)
+- Wire up `useTonConnectUI` for sending transactions to `DAO_WALLET_ADDRESS`
 
----
+#### 5. Hexagon Aesthetic Tightening
+**File: `src/components/game/HexSlot.tsx`**
+- Reduce orbit radius from 140px to 110px (more compact)
+- Slightly larger hex slots (w-18 h-18)
+- Thinner stroke, more glow on unlocked slots
 
-## ⚙️ Mecánicas de Juego
+#### 6. CSS Fix for Scrolling
+**File: `src/index.css`**
+- Change `html, body, #root` from `overflow-hidden` to allow scrolling within screen containers
 
-### Stamina
-- Máximo: 100 puntos
-- Recarga: +1 cada 60 segundos automáticamente
-- Persistencia en Supabase (sincronizado entre dispositivos)
+### Files Modified
+1. `src/hooks/useTelegram.ts` — platform detection, always set isReady
+2. `src/pages/Index.tsx` — landing state for non-Telegram, updated tab names
+3. `src/components/game/Navigation.tsx` — compact tabs, renamed labels
+4. `src/screens/NetworkScreen.tsx` — fix scroll, remove TonConnect button
+5. `src/screens/MineScreen.tsx` — add TonConnect + energy pack store
+6. `src/components/game/HexSlot.tsx` — tighter hex layout
+7. `src/index.css` — scroll fix
 
-### Energía Punto Cero
-- Contador acumulativo sin límite
-- Se gana: +1 por tap en Toroide, +50 por misión completada
-- Sincronizado en la nube via Supabase
-
-### Verificación de Misiones
-- Sistema de "Verificación con Retraso Simulado"
-- Contador de 33 segundos post-visita antes de poder reclamar
-- Estado guardado en Supabase para evitar repetición
-
----
-
-## 🎵 Audio Inmersivo
-- **Música ambiental** Solarpunk/electrónica orgánica (loop continuo, toggleable)
-- **Efectos de sonido**:
-  - Tap en Toroide: pulso energético
-  - Misión completada: tono de logro
-  - Navegación: transiciones suaves
-  - Tutorial: notificaciones sutiles
-
----
-
-## 🔧 Integraciones Técnicas
-
-### Telegram Mini App
-- SDK oficial de Telegram WebApp
-- `window.Telegram.WebApp.expand()` para pantalla completa
-- Todos los enlaces abren en ventana nueva
-
-### Backend (Supabase)
-- **Tablas**: usuarios, stamina, energía, misiones_completadas
-- **Autenticación**: Via Telegram user_id
-- **Sincronización**: Tiempo real para progreso entre dispositivos
-- **Edge Functions**: Para audio (ElevenLabs) y validaciones
-
-### Tecnologías Frontend
-- React + TypeScript + Vite
-- Three.js + @react-three/fiber (Tierra 3D)
-- Framer Motion (Toroide y animaciones UI)
-- Tailwind CSS (estilos Greenpunk)
-
----
-
-## 📋 Sistema de Tutorial
-
-1. **Paso 1**: "Bienvenido Alien. Este es el Planeta Tierra Nivel 0."
-2. **Paso 2**: "Pulsa en la Core Mina para entrar al núcleo de energía."
-3. **Paso 3**: "En la Mina, pulsa el Toroide para extraer Energía Punto Cero."
-
-Cada paso con overlay oscuro, spotlight en el elemento relevante, y animación de siguiente paso.
