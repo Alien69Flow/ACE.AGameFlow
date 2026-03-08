@@ -127,6 +127,11 @@ export const useGameState = () => {
   const [offlineEarnings, setOfflineEarnings] = useState(0);
   const [clan, setClan] = useState<ClanInfo | null>(null);
   const [clanLeaderboard, setClanLeaderboard] = useState<ClanInfo[]>([]);
+  const [achievements, setAchievements] = useState<AchievementInfo[]>([]);
+  const [achievementCounts, setAchievementCounts] = useState<{ unlocked: number; total: number }>({ unlocked: 0, total: 13 });
+  const [newAchievementQueue, setNewAchievementQueue] = useState<NewAchievement[]>([]);
+  const [canSpinFree, setCanSpinFree] = useState(false);
+  const [friends, setFriends] = useState<{ username: string | null; energy: number; last_seen_at: string }[]>([]);
   
   const staminaIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMiningRef = useRef(false);
