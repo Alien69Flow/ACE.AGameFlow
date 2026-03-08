@@ -393,6 +393,48 @@ export const NetworkScreen = ({
             </div>
           </section>
         )}
+
+        {activeTab === 'friends' && (
+          <section>
+            <motion.h2 initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="font-display text-base font-bold text-secondary text-glow-gold mb-2">
+              👾 AMIGOS REFERIDOS
+            </motion.h2>
+            <div className="space-y-1.5">
+              {friends.map((friend, index) => {
+                const lastSeen = new Date(friend.last_seen_at);
+                const minutesAgo = Math.floor((Date.now() - lastSeen.getTime()) / (1000 * 60));
+                const isOnline = minutesAgo < 5;
+                const timeAgo = minutesAgo < 60 ? `${minutesAgo}m` : minutesAgo < 1440 ? `${Math.floor(minutesAgo / 60)}h` : `${Math.floor(minutesAgo / 1440)}d`;
+                
+                return (
+                  <motion.div key={index} initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: index * 0.03 }}
+                    className="flex items-center gap-3 p-2.5 rounded-lg bg-card/50 border border-muted/10"
+                  >
+                    <div className="relative">
+                      <Users className="w-5 h-5 text-muted-foreground" />
+                      {isOnline && <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-primary rounded-full" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-display text-xs text-foreground truncate block">{friend.username || 'Anonymous'}</span>
+                      <span className="font-body text-[9px] text-muted-foreground">{isOnline ? '🟢 Online' : `Visto hace ${timeAgo}`}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-secondary" />
+                      <span className="font-display text-sm font-bold text-secondary text-glow-gold">{friend.energy.toLocaleString()}</span>
+                    </div>
+                  </motion.div>
+                );
+              })}
+              {friends.length === 0 && (
+                <div className="text-center py-8">
+                  <Users className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
+                  <p className="text-muted-foreground text-xs">Aún no tienes amigos referidos</p>
+                  <p className="text-muted-foreground/60 text-[10px] mt-1">¡Comparte tu código para ganar energía!</p>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
       </div>
     </motion.div>
   );
