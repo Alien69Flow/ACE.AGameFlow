@@ -254,6 +254,7 @@ export const useGameState = () => {
           energy: prev.energy - gain,
           stamina: prev.stamina + 1,
         }));
+        if (data.error?.includes('Rate')) toast.error('⚡ Demasiado rápido, espera un momento');
         return false;
       }
       
