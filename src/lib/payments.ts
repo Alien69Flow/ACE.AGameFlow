@@ -1,4 +1,4 @@
-export const DAO_WALLET_ADDRESS = "UQA_CAMBIA_ESTO_POR_TU_WALLET_TON"; 
+export const DAO_WALLET_ADDRESS = "UQDpx7rfaaO-P6-Lnu0IrR1kWEo2Geo1VMx1UYy0IyyCJJ20"; 
 
 export interface EnergyPack {
   id: string;
