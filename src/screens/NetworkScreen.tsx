@@ -77,6 +77,7 @@ export const NetworkScreen = ({
   missions,
   onStartMission,
   onClaimMission,
+  onVerifyMission,
   openLink,
   referralCode,
   referralCount,
