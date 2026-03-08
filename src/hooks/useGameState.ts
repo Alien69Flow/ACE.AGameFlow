@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTelegram } from './useTelegram';
+import { toast } from 'sonner';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
