@@ -284,8 +284,8 @@ export const useGameState = () => {
       setMissions(prev => prev.map(m => 
         m.id === missionId ? { ...m, startedAt: new Date(data.startedAt) } : m
       ));
-    } catch (error) {
-      console.error('Misión fallida');
+    } catch {
+      toast.error('❌ No se pudo iniciar la misión');
     }
   }, [gameState.profileId, initData]);
 
