@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useGameState } from '@/hooks/useGameState';
 import { useAudio } from '@/hooks/useAudio';
@@ -10,10 +10,12 @@ import { LandingScreen } from '@/components/game/LandingScreen';
 import { PlanetScreen } from '@/screens/PlanetScreen';
 import { MineScreen } from '@/screens/MineScreen';
 import { NetworkScreen } from '@/screens/NetworkScreen';
+import { UpgradesScreen } from '@/screens/UpgradesScreen';
+import { AirdropScreen } from '@/screens/AirdropScreen';
+import { Zap } from 'lucide-react';
 
-type Screen = 'planet' | 'mine' | 'network';
+type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop';
 
-// Mission definitions
 const MISSIONS = [
   { id: 'facebook', name: 'Facebook', url: 'https://www.facebook.com/Alien69Flow', icon: '📘', reward: 50 },
   { id: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/alien69flow/', icon: '📸', reward: 50 },
@@ -40,11 +42,22 @@ const Index = () => {
     leaderboard,
     userRank,
     activateMultiplier,
+    fetchUpgrades,
+    buyUpgrade,
+    offlineEarnings,
+    dismissOfflineEarnings,
+    clan,
+    createClan,
+    joinClan,
+    leaveClan,
+    fetchClanLeaderboard,
+    clanLeaderboard,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('planet');
   const [tutorialStep, setTutorialStep] = useState<number | null>(null);
+  const [showOfflineModal, setShowOfflineModal] = useState(false);
 
   // Initialize missions
   useEffect(() => {
@@ -62,6 +75,13 @@ const Index = () => {
       setTutorialStep(0);
     }
   }, [isLoading, isTelegram, gameState.tutorialCompleted]);
+
+  // Show offline earnings modal
+  useEffect(() => {
+    if (offlineEarnings > 0 && !isLoading) {
+      setShowOfflineModal(true);
+    }
+  }, [offlineEarnings, isLoading]);
 
   const handleNavigate = useCallback((screen: Screen) => {
     playNavigateSound();
@@ -125,7 +145,7 @@ const Index = () => {
     return <LandingScreen />;
   }
 
-  // Game loading (Telegram but fetching profile)
+  // Game loading
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
@@ -147,6 +167,50 @@ const Index = () => {
         multiplier={gameState.multiplier}
         multiplierExpiresAt={gameState.multiplierExpiresAt}
       />
+
+      {/* Offline Earnings Modal */}
+      <AnimatePresence>
+        {showOfflineModal && offlineEarnings > 0 && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 backdrop-blur-sm px-6"
+          >
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              className="bg-card border border-primary/40 rounded-2xl p-6 w-full max-w-sm text-center space-y-4 box-glow"
+            >
+              <h2 className="font-display text-xl font-bold text-primary text-glow">
+                ¡BIENVENIDO DE VUELTA!
+              </h2>
+              <p className="font-body text-xs text-muted-foreground">
+                Tus minas generaron energía mientras estabas fuera
+              </p>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 200 }}
+                className="flex items-center justify-center gap-2"
+              >
+                <Zap className="w-8 h-8 text-secondary" />
+                <span className="font-display text-3xl font-bold text-secondary text-glow-gold">
+                  +{offlineEarnings.toLocaleString()}
+                </span>
+              </motion.div>
+              <motion.button
+                onClick={() => { setShowOfflineModal(false); dismissOfflineEarnings(); }}
+                whileTap={{ scale: 0.95 }}
+                className="w-full py-3 rounded-xl bg-primary/20 border border-primary/40 font-display text-sm text-primary hover:bg-primary/30 transition-colors"
+              >
+                ¡GENIAL!
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <AnimatePresence mode="wait">
@@ -172,6 +236,14 @@ const Index = () => {
             onActivateMultiplier={activateMultiplier}
           />
         )}
+        {currentScreen === 'upgrades' && (
+          <UpgradesScreen
+            key="upgrades"
+            energy={gameState.energy}
+            onFetchUpgrades={fetchUpgrades}
+            onBuyUpgrade={buyUpgrade}
+          />
+        )}
         {currentScreen === 'network' && (
           <NetworkScreen
             key="network"
@@ -186,6 +258,21 @@ const Index = () => {
             leaderboard={leaderboard}
             userRank={userRank}
             onFetchLeaderboard={fetchLeaderboard}
+            clan={clan}
+            clanId={gameState.clanId}
+            onCreateClan={createClan}
+            onJoinClan={joinClan}
+            onLeaveClan={leaveClan}
+            clanLeaderboard={clanLeaderboard}
+            onFetchClanLeaderboard={fetchClanLeaderboard}
+          />
+        )}
+        {currentScreen === 'airdrop' && (
+          <AirdropScreen
+            key="airdrop"
+            energy={gameState.energy}
+            referralCount={gameState.referralCount}
+            dailyStreak={gameState.dailyStreak}
           />
         )}
       </AnimatePresence>
