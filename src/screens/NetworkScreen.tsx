@@ -35,6 +35,7 @@ interface NetworkScreenProps {
   missions: Mission[];
   onStartMission: (id: string) => void;
   onClaimMission: (id: string, reward: number) => void;
+  onVerifyMission: (missionId: string, verifyType: string) => Promise<{ verified: boolean; error?: string } | null>;
   openLink: (url: string) => void;
   referralCode: string | null;
   referralCount: number;
