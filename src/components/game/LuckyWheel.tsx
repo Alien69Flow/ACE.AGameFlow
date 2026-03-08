@@ -31,6 +31,7 @@ interface LuckyWheelProps {
 }
 
 export const LuckyWheel = ({ isOpen, onClose, onSpin, canSpinFree }: LuckyWheelProps) => {
+  const { hapticFeedback } = useTelegram();
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [result, setResult] = useState<Prize | null>(null);
