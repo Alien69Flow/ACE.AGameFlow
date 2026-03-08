@@ -1,100 +1,48 @@
 
-# 🌍 AlienFlow - Telegram Mini App
 
-## Visión General
-Una experiencia de minería de Energía Punto Cero con estética **Greenpunk/Solarpunk**. El usuario es un "Alien" que extrae energía del núcleo de la Tierra a través de un Toroide gravitatorio.
+## Plan: Cinematic Landing Page — Glitch FX, Typography Upgrade, Social Icons
 
----
+### 1. Typography Upgrade
+**File: `index.html`** — Add Google Font **"Exo 2"** (a sleek alien/sci-fi font) alongside existing Orbitron and Rajdhani. Exo 2 gives a more alien, futuristic feel for the title while keeping Rajdhani for body text.
 
-## 🎨 Diseño Visual
-- **Paleta**: Fondo #000 (negro profundo), Verde Neón #39FF14, Oro Tesla #D4AF37
-- **Estilo**: Cinematográfico, futurista, con brillos, halos y partículas flotantes
-- **Tipografía**: Sans-serif futurista con efectos de brillo neón
+**File: `src/index.css`** — Update the font import to include `Exo+2` with weights 700-900.
 
----
+**File: `src/components/game/LandingScreen.tsx`** — Use `Exo 2` for the main "ALIENFLOW" title (bigger, bolder alien vibe), keep `Orbitron` for stats and CTA button, `Rajdhani` for subtitles/labels.
 
-## 📱 Pantallas
+### 2. Glitch Effect on Title
+Add a CSS `@keyframes glitch` animation to `src/index.css` with color-channel offset (red/cyan shadows shifting left/right) and a slight clip-path flicker. Apply it to the "ALIENFLOW" title on entrance with a 2-second glitch burst that settles into a subtle continuous glitch loop.
 
-### 1. PLANETA (Pantalla Principal)
-- **Tierra 3D** central rotando con Three.js (texturas realistas, nubes, atmósfera brillante)
-- **6 slots hexagonales** orbitando alrededor:
-  - Slot 1: "Core Mina" — Estilo Solarpunk con animación de actividad
-  - Slots 2-6: Bloqueados con candado dorado animado
-- **Tutorial inicial**: Overlay Greenpunk con pasos guiados y tooltips animados
+### 3. Typing Effect on Subtitle
+Implement a simple typing animation for the subtitle "ZERO-POINT ENERGY MINING · NEUTRINO PROTOCOL" using `framer-motion` — letters appear one by one with a blinking cursor at the end.
 
-### 2. MINA
-- **Toroide central** con animaciones 2D premium en Framer Motion:
-  - Flujo gravitatorio continuo con partículas verde neón
-  - Pulso magnético al ritmo del tap
-  - Ondas expansivas al extraer energía
-- **Interacción**: Tap = +1 Energía, -1 Stamina, vibración visual y efecto de sonido
-- **Indicadores**: Contador de Energía y barra de Stamina visibles
+### 4. Logo Cinematic Entrance
+Enhance the logo entrance: start with a bright flash (white→green), then scale-bounce in with a ripple ring expanding outward. More dramatic than the current simple spring.
 
-### 3. RED (Conexiones Sociales)
-- **Botón "Conectar Wallet TON"** prominente (funcionalidad preparada para futuro)
-- **Sección Misiones** (+50 Energía cada una):
-  - Facebook, Instagram, LinkedIn, Telegram, X (Twitter) — Orden alfabético
-  - Flujo: Clic → Abre enlace → Al volver, "Verificando..." (33s) → "Reclamar Recompensa"
-- **Sección Ecosistema** (orden alfabético):
-  - AlienFlow DAO, Discord (Coming Soon), Email, GitBook, GitHub, LinkedIn Personal, Reddit, Threads, TikTok (Coming Soon)
-- **Sección Legado**: 2 colecciones de OpenSea NFTs
+### 5. Social Links — Official Icons, Alphabetical Order
+Replace unicode symbols with **Lucide React** icons where available and SVG brand marks for the rest. Consolidate into ONE alphabetically sorted list with proper icons:
 
----
+| Platform | Icon | URL | Status |
+|---|---|---|---|
+| Discord | `MessageCircle` | # | Soon |
+| DoraHacks | `Rocket` | dorahacks.io/org/alien69flow | ✓ |
+| Facebook | `Facebook` | facebook.com/Alien69Flow | ✓ |
+| Farcaster | `Cast` | warpcast.com/alien69flow | ✓ |
+| GitHub | `Github` | github.com/Alien69Flow | ✓ |
+| GitBook | `BookOpen` | # | Soon |
+| HackMD | `FileText` | hackmd.io/@Alien69Flow | ✓ |
+| Instagram | `Instagram` | instagram.com/alien69flow | ✓ |
+| LinkedIn | `Linkedin` | linkedin.com/company/alienflow | ✓ |
+| Reddit | `MessageSquare` | reddit.com/u/Alien69Flow | ✓ |
+| Telegram | `Send` | t.me/AlienFlow | ✓ |
+| Threads | `AtSign` | threads.net/@alien69flow | ✓ |
+| TikTok | `Music` | tiktok.com/@alien69flow | Soon |
+| Website | `Globe` | alienflow.space | ✓ |
+| X | `Twitter` | x.com/alien69flow | ✓ |
 
-## ⚙️ Mecánicas de Juego
+Rendered as a compact grid with small Lucide icons + label, sorted A-Z. "Soon" items are muted/disabled.
 
-### Stamina
-- Máximo: 100 puntos
-- Recarga: +1 cada 60 segundos automáticamente
-- Persistencia en Supabase (sincronizado entre dispositivos)
+### Files Modified
+1. `index.html` — add Exo 2 font (or move to CSS import)
+2. `src/index.css` — add glitch keyframes, typing cursor animation, update font import
+3. `src/components/game/LandingScreen.tsx` — full rewrite with glitch title, typing subtitle, cinematic logo entrance, alphabetical social grid with Lucide icons
 
-### Energía Punto Cero
-- Contador acumulativo sin límite
-- Se gana: +1 por tap en Toroide, +50 por misión completada
-- Sincronizado en la nube via Supabase
-
-### Verificación de Misiones
-- Sistema de "Verificación con Retraso Simulado"
-- Contador de 33 segundos post-visita antes de poder reclamar
-- Estado guardado en Supabase para evitar repetición
-
----
-
-## 🎵 Audio Inmersivo
-- **Música ambiental** Solarpunk/electrónica orgánica (loop continuo, toggleable)
-- **Efectos de sonido**:
-  - Tap en Toroide: pulso energético
-  - Misión completada: tono de logro
-  - Navegación: transiciones suaves
-  - Tutorial: notificaciones sutiles
-
----
-
-## 🔧 Integraciones Técnicas
-
-### Telegram Mini App
-- SDK oficial de Telegram WebApp
-- `window.Telegram.WebApp.expand()` para pantalla completa
-- Todos los enlaces abren en ventana nueva
-
-### Backend (Supabase)
-- **Tablas**: usuarios, stamina, energía, misiones_completadas
-- **Autenticación**: Via Telegram user_id
-- **Sincronización**: Tiempo real para progreso entre dispositivos
-- **Edge Functions**: Para audio (ElevenLabs) y validaciones
-
-### Tecnologías Frontend
-- React + TypeScript + Vite
-- Three.js + @react-three/fiber (Tierra 3D)
-- Framer Motion (Toroide y animaciones UI)
-- Tailwind CSS (estilos Greenpunk)
-
----
-
-## 📋 Sistema de Tutorial
-
-1. **Paso 1**: "Bienvenido Alien. Este es el Planeta Tierra Nivel 0."
-2. **Paso 2**: "Pulsa en la Core Mina para entrar al núcleo de energía."
-3. **Paso 3**: "En la Mina, pulsa el Toroide para extraer Energía Punto Cero."
-
-Cada paso con overlay oscuro, spotlight en el elemento relevante, y animación de siguiente paso.
