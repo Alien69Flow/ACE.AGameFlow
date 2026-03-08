@@ -29,6 +29,8 @@ interface Mission {
   url: string;
   icon: string;
   reward: number;
+  verifiable?: boolean;
+  verifyType?: string | null;
   startedAt: Date | null;
   completedAt: Date | null;
   claimed: boolean;
