@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import { X, Sparkles, Zap, Star, Clock } from 'lucide-react';
+import { useTelegram } from '@/hooks/useTelegram';
 
 interface Prize {
   id: string;
