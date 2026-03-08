@@ -31,6 +31,12 @@ interface ClanInfo {
   total_energy: number;
 }
 
+interface FriendEntry {
+  username: string | null;
+  energy: number;
+  last_seen_at: string;
+}
+
 interface NetworkScreenProps {
   missions: Mission[];
   onStartMission: (id: string) => void;
@@ -51,6 +57,8 @@ interface NetworkScreenProps {
   onLeaveClan: () => Promise<boolean>;
   clanLeaderboard: ClanInfo[];
   onFetchClanLeaderboard: () => void;
+  friends: FriendEntry[];
+  onFetchFriends: () => void;
 }
 
 const ecosystemLinks = [
