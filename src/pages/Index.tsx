@@ -6,10 +6,10 @@ import { useAudio } from '@/hooks/useAudio';
 import { StaminaBar } from '@/components/game/StaminaBar';
 import { Navigation } from '@/components/game/Navigation';
 import { Tutorial } from '@/components/game/Tutorial';
+import { LandingScreen } from '@/components/game/LandingScreen';
 import { PlanetScreen } from '@/screens/PlanetScreen';
 import { MineScreen } from '@/screens/MineScreen';
 import { NetworkScreen } from '@/screens/NetworkScreen';
-import { TonConnectButton } from '@tonconnect/ui-react'; 
 
 type Screen = 'planet' | 'mine' | 'network';
 
@@ -23,7 +23,7 @@ const MISSIONS = [
 ];
 
 const Index = () => {
-  const { isReady, openLink, hapticFeedback } = useTelegram();
+  const { isReady, isTelegram, openLink, hapticFeedback } = useTelegram();
   const { 
     gameState, 
     missions, 
@@ -51,10 +51,10 @@ const Index = () => {
 
   // Start tutorial if not completed
   useEffect(() => {
-    if (!isLoading && !gameState.tutorialCompleted) {
+    if (!isLoading && isTelegram && !gameState.tutorialCompleted) {
       setTutorialStep(0);
     }
-  }, [isLoading, gameState.tutorialCompleted]);
+  }, [isLoading, isTelegram, gameState.tutorialCompleted]);
 
   const handleNavigate = useCallback((screen: Screen) => {
     playNavigateSound();
@@ -64,8 +64,6 @@ const Index = () => {
   const handleEnterMine = useCallback(() => {
     playNavigateSound();
     setCurrentScreen('mine');
-    
-    // Progress tutorial if on step 1 (Core Mina)
     if (tutorialStep === 1) {
       setTutorialStep(2);
     }
@@ -103,12 +101,30 @@ const Index = () => {
     completeTutorial();
   }, [completeTutorial]);
 
-  if (!isReady || isLoading) {
+  // Loading state
+  if (!isReady) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="font-display text-primary text-glow">Cargando AlienFlow...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Landing state for non-Telegram browsers
+  if (!isTelegram) {
+    return <LandingScreen />;
+  }
+
+  // Game loading (Telegram but fetching profile)
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-background">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="font-display text-primary text-glow">Sincronizando Neutrinos...</p>
         </div>
       </div>
     );

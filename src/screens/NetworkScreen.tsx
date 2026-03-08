@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
 import { MissionCard } from '@/components/game/MissionCard';
 import { EcosystemLink } from '@/components/game/EcosystemLink';
-import { TonConnectButton } from '@tonconnect/ui-react';
 
 interface Mission {
   id: string;
@@ -49,24 +48,19 @@ export const NetworkScreen = ({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="flex-1 overflow-y-auto h-[calc(100vh-100px)] w-full pb-32"
+      className="flex-1 overflow-y-auto pb-24 pt-2"
     >
-      <div className="px-4 space-y-6">
-        {/* BOTÓN REAL DE TON CONNECT */}
-        <div className="flex justify-center w-full py-4">
-          <TonConnectButton />
-        </div>
-
+      <div className="px-4 space-y-5">
         {/* Missions Section */}
         <section>
           <motion.h2
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            className="font-display text-lg font-bold text-primary text-glow mb-3"
+            className="font-display text-base font-bold text-primary text-glow mb-2"
           >
             MISIONES
           </motion.h2>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {missions.map((mission, index) => (
               <motion.div
                 key={mission.id}
@@ -90,11 +84,11 @@ export const NetworkScreen = ({
           <motion.h2
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            className="font-display text-lg font-bold text-primary text-glow mb-3"
+            className="font-display text-base font-bold text-primary text-glow mb-2"
           >
             ECOSISTEMA
           </motion.h2>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {ecosystemLinks.map((link, index) => (
               <motion.div
                 key={link.name}
@@ -102,10 +96,7 @@ export const NetworkScreen = ({
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: index * 0.03 }}
               >
-                <EcosystemLink
-                  {...link}
-                  openLink={openLink}
-                />
+                <EcosystemLink {...link} openLink={openLink} />
               </motion.div>
             ))}
           </div>
@@ -116,11 +107,11 @@ export const NetworkScreen = ({
           <motion.h2
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            className="font-display text-lg font-bold text-secondary text-glow-gold mb-3"
+            className="font-display text-base font-bold text-secondary text-glow-gold mb-2"
           >
             LEGADO (OpenSea NFTs)
           </motion.h2>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {legacyCollections.map((link, index) => (
               <motion.div
                 key={link.name}
@@ -128,10 +119,7 @@ export const NetworkScreen = ({
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: index * 0.05 }}
               >
-                <EcosystemLink
-                  {...link}
-                  openLink={openLink}
-                />
+                <EcosystemLink {...link} openLink={openLink} />
               </motion.div>
             ))}
           </div>

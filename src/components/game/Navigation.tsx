@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Globe, Pickaxe, Network, Volume2, VolumeX } from 'lucide-react';
+import { Zap, Pickaxe, Users, Volume2, VolumeX } from 'lucide-react';
 
 type Screen = 'planet' | 'mine' | 'network';
 
@@ -10,10 +10,10 @@ interface NavigationProps {
   onToggleMute: () => void;
 }
 
-const navItems: { id: Screen; icon: typeof Globe; label: string }[] = [
-  { id: 'planet', icon: Globe, label: 'Planeta' },
+const navItems: { id: Screen; icon: typeof Zap; label: string }[] = [
+  { id: 'planet', icon: Zap, label: 'Energía' },
   { id: 'mine', icon: Pickaxe, label: 'Mina' },
-  { id: 'network', icon: Network, label: 'Red' },
+  { id: 'network', icon: Users, label: 'Referidos' },
 ];
 
 export const Navigation = ({ currentScreen, onNavigate, isMuted, onToggleMute }: NavigationProps) => {
@@ -21,9 +21,9 @@ export const Navigation = ({ currentScreen, onNavigate, isMuted, onToggleMute }:
     <motion.nav
       initial={{ y: 100 }}
       animate={{ y: 0 }}
-      className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4"
+      className="fixed bottom-0 left-0 right-0 z-50 px-3 pb-3"
     >
-      <div className="bg-card/90 backdrop-blur-lg border border-primary/30 rounded-2xl p-2 flex items-center justify-around">
+      <div className="bg-card/90 backdrop-blur-lg border border-primary/30 rounded-xl p-1.5 flex items-center justify-around">
         {navItems.map((item) => {
           const isActive = currentScreen === item.id;
           const Icon = item.icon;
@@ -33,7 +33,7 @@ export const Navigation = ({ currentScreen, onNavigate, isMuted, onToggleMute }:
               key={item.id}
               onClick={() => onNavigate(item.id)}
               className={`
-                relative flex flex-col items-center gap-1 px-6 py-2 rounded-xl
+                relative flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg
                 transition-colors duration-200
                 ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}
               `}
@@ -42,28 +42,28 @@ export const Navigation = ({ currentScreen, onNavigate, isMuted, onToggleMute }:
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-primary/10 rounded-xl"
+                  className="absolute inset-0 bg-primary/10 rounded-lg"
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 />
               )}
-              <Icon className={`w-5 h-5 relative z-10 ${isActive ? 'text-glow' : ''}`} />
-              <span className={`font-display text-xs relative z-10 ${isActive ? 'text-glow' : ''}`}>
+              <Icon className={`w-4 h-4 relative z-10 ${isActive ? 'text-glow' : ''}`} />
+              <span className={`font-display text-[10px] relative z-10 ${isActive ? 'text-glow' : ''}`}>
                 {item.label}
               </span>
             </motion.button>
           );
         })}
 
-        {/* Mute button */}
+        {/* Mute button - compact */}
         <motion.button
           onClick={onToggleMute}
-          className="p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
           whileTap={{ scale: 0.95 }}
         >
           {isMuted ? (
-            <VolumeX className="w-5 h-5" />
+            <VolumeX className="w-4 h-4" />
           ) : (
-            <Volume2 className="w-5 h-5" />
+            <Volume2 className="w-4 h-4" />
           )}
         </motion.button>
       </div>

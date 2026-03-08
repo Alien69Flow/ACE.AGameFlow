@@ -5,6 +5,7 @@ export const useTelegram = () => {
   const [initData, setInitData] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
+  const [isTelegram, setIsTelegram] = useState(false);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -12,8 +13,7 @@ export const useTelegram = () => {
     if (tg) {
       tg.ready();
       tg.expand();
-      
-      // Store the full initData for server-side validation
+      setIsTelegram(true);
       setInitData(tg.initData);
       
       const user = tg.initDataUnsafe?.user;
@@ -23,12 +23,13 @@ export const useTelegram = () => {
       }
       setIsReady(true);
     } else {
-      // Not in Telegram WebApp - app won't function without Telegram
-      console.warn('This app requires Telegram WebApp to function');
+      // Not in Telegram - mark as ready but no initData so landing shows
+      console.warn('Not in Telegram WebApp - showing landing state');
+      setIsTelegram(false);
       setInitData(null);
       setUserId(null);
       setUsername(null);
-      setIsReady(false);
+      setIsReady(true);
     }
   }, []);
 
@@ -55,6 +56,6 @@ export const useTelegram = () => {
     username,
     hapticFeedback,
     openLink,
-    isTelegram: !!window.Telegram?.WebApp,
+    isTelegram,
   };
 };
