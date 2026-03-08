@@ -181,6 +181,7 @@ const Index = () => {
         energy={gameState.energy}
         multiplier={gameState.multiplier}
         multiplierExpiresAt={gameState.multiplierExpiresAt}
+        achievementCounts={achievementCounts}
       />
 
       {/* Offline Earnings Modal */}
