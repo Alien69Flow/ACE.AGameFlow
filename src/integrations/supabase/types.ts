@@ -55,10 +55,17 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string
+          daily_streak: number
           energy: number
           id: string
+          last_daily_claim: string | null
           last_stamina_update: string
           max_stamina: number
+          multiplier: number
+          multiplier_expires_at: string | null
+          referral_code: string | null
+          referral_count: number
+          referred_by: string | null
           stamina: number
           telegram_id: string
           tutorial_completed: boolean
@@ -67,10 +74,17 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          daily_streak?: number
           energy?: number
           id?: string
+          last_daily_claim?: string | null
           last_stamina_update?: string
           max_stamina?: number
+          multiplier?: number
+          multiplier_expires_at?: string | null
+          referral_code?: string | null
+          referral_count?: number
+          referred_by?: string | null
           stamina?: number
           telegram_id: string
           tutorial_completed?: boolean
@@ -79,17 +93,32 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          daily_streak?: number
           energy?: number
           id?: string
+          last_daily_claim?: string | null
           last_stamina_update?: string
           max_stamina?: number
+          multiplier?: number
+          multiplier_expires_at?: string | null
+          referral_code?: string | null
+          referral_count?: number
+          referred_by?: string | null
           stamina?: number
           telegram_id?: string
           tutorial_completed?: boolean
           updated_at?: string
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
