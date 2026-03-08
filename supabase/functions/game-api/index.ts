@@ -97,7 +97,7 @@ const ACHIEVEMENT_CATALOG = [
   { id: 'all_missions', name: 'Completista', description: 'Completa todas las misiones', icon: '✅', reward: 500 },
 ];
 
-const TOTAL_MISSIONS_COUNT = 7; // Number of missions in the game
+const TOTAL_MISSIONS_COUNT = 6; // Number of missions in the game
 
 async function checkAchievements(supabase: ReturnType<typeof createClient>, profileId: string): Promise<{ id: string; name: string; icon: string; reward: number }[]> {
   // Get profile data
