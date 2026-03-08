@@ -302,11 +302,29 @@ export const LandingScreen = () => {
           })}
         </div>
 
+        {/* Powered by TON badge */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 3 }}
+          className="flex items-center gap-1.5 mt-1"
+        >
+          <motion.div
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2.5, repeat: Infinity }}
+            className="flex items-center gap-1 px-3 py-1 rounded-full border border-primary/20 bg-card/60 backdrop-blur-sm"
+          >
+            <span className="text-[9px] text-primary/60 tracking-[0.15em] font-semibold" style={{ fontFamily: "'Rajdhani', sans-serif" }}>
+              ⬡ POWERED BY TON
+            </span>
+          </motion.div>
+        </motion.div>
+
         {/* Bottom tag */}
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 2.8 }}
+          transition={{ delay: 3.1 }}
           className="text-[8px] text-muted-foreground/40 text-center tracking-[0.2em] mt-1"
           style={{ fontFamily: "'Rajdhani', sans-serif" }}
         >
