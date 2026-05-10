@@ -24,7 +24,7 @@ const PARTICLES = Array.from({ length: 30 }, (_, i) => ({
 }));
 
 const STATS = [
-  { label: '3.14M+', sub: 'MINERS' },
+  { label: '(π) > (Φ)', sub: 'MINERS' },
   { label: '∞', sub: 'ENERGY' },
   { label: 'TON', sub: 'BLOCKCHAIN' },
 ];
