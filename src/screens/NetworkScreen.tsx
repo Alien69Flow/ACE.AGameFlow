@@ -141,7 +141,7 @@ export const NetworkScreen = ({
   const handleShareTelegram = () => {
     if (referralCode) {
       const botLink = `https://t.me/Alien69Bot?start=${referralCode}`;
-      const message = encodeURIComponent(`🛸 Únete a AlienFlow y mina Energía Punto Cero! +50 energía gratis al unirte\n${botLink}`);
+      const message = encodeURIComponent(`🛸 Únete a ACE FLOW y mina Energía Punto Cero! +50 energía gratis al unirte\n${botLink}`);
       const tg = (window as unknown as { Telegram?: { WebApp?: { openTelegramLink: (url: string) => void } } }).Telegram?.WebApp;
       if (tg?.openTelegramLink) {
         tg.openTelegramLink(`https://t.me/share/url?url=${botLink}&text=${message}`);
