@@ -307,7 +307,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      apply_referral_atomic: {
+        Args: { p_referral_code: string; p_telegram_id: string }
+        Returns: Json
+      }
+      claim_daily_atomic: { Args: { p_telegram_id: string }; Returns: Json }
+      claim_daily_combo_atomic: {
+        Args: { p_date: string; p_profile_id: string }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

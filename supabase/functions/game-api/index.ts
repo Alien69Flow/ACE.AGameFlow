@@ -481,7 +481,15 @@ Deno.serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        
+
+        // Whitelist mission IDs against server-side catalog
+        if (!MISSION_REWARDS[missionId]) {
+          return new Response(
+            JSON.stringify({ error: 'Unknown mission' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const { data: profile } = await supabase
           .from('profiles')
           .select('id')
@@ -701,57 +709,27 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, energy, referred_by, referral_code')
-          .eq('telegram_id', telegramUserId)
-          .single();
+        const { data: rpcResult, error: rpcErr } = await supabase.rpc('apply_referral_atomic', {
+          p_telegram_id: telegramUserId,
+          p_referral_code: referralCode,
+        });
 
-        if (!profile) {
+        if (rpcErr) {
           return new Response(
-            JSON.stringify({ error: 'Profile not found' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: 'Failed to apply referral' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        if (profile.referred_by) {
+        const refResult = rpcResult as any;
+        if (refResult?.error) {
           return new Response(
-            JSON.stringify({ error: 'Already used a referral code' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: refResult.error }),
+            { status: refResult.status || 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        if (profile.referral_code === referralCode) {
-          return new Response(
-            JSON.stringify({ error: 'Cannot use your own code' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const { data: referrer } = await supabase
-          .from('profiles')
-          .select('id, energy, referral_count')
-          .eq('referral_code', referralCode)
-          .single();
-
-        if (!referrer) {
-          return new Response(
-            JSON.stringify({ error: 'Referral code not found' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        await supabase
-          .from('profiles')
-          .update({ referred_by: referrer.id, energy: profile.energy + 50 })
-          .eq('id', profile.id);
-
-        await supabase
-          .from('profiles')
-          .update({ energy: referrer.energy + 100, referral_count: referrer.referral_count + 1 })
-          .eq('id', referrer.id);
-
-        const newAchievementsRef = await checkAchievements(supabase, profile.id);
+        const newAchievementsRef = await checkAchievements(supabase, refResult.profileId);
 
         return new Response(
           JSON.stringify({ success: true, energyGained: 50, newAchievements: newAchievementsRef }),
@@ -760,52 +738,35 @@ Deno.serve(async (req) => {
       }
 
       case 'claim-daily': {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, energy, last_daily_claim, daily_streak')
-          .eq('telegram_id', telegramUserId)
-          .single();
+        const { data: dailyRpc, error: dailyErr } = await supabase.rpc('claim_daily_atomic', {
+          p_telegram_id: telegramUserId,
+        });
 
-        if (!profile) {
+        if (dailyErr) {
           return new Response(
-            JSON.stringify({ error: 'Profile not found' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: 'Failed to claim daily' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        const now = new Date();
-        const lastClaim = profile.last_daily_claim ? new Date(profile.last_daily_claim) : null;
-
-        if (lastClaim) {
-          const hoursSinceClaim = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60);
-          if (hoursSinceClaim < 24) {
-            return new Response(
-              JSON.stringify({ error: 'Already claimed today', streak: profile.daily_streak }),
-              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
+        const dailyResult = dailyRpc as any;
+        if (dailyResult?.error) {
+          return new Response(
+            JSON.stringify({ error: dailyResult.error, streak: dailyResult.streak }),
+            { status: dailyResult.status || 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
-        let newStreak = 1;
-        if (lastClaim) {
-          const hoursSinceClaim = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60);
-          if (hoursSinceClaim < 48) {
-            newStreak = Math.min(profile.daily_streak + 1, 10);
-          }
-        }
-
-        const reward = Math.min(newStreak * 10, 100);
-        const newEnergy = profile.energy + reward;
-
-        await supabase
-          .from('profiles')
-          .update({ energy: newEnergy, last_daily_claim: now.toISOString(), daily_streak: newStreak })
-          .eq('id', profile.id);
-
-        const newAchievementsDaily = await checkAchievements(supabase, profile.id);
+        const newAchievementsDaily = await checkAchievements(supabase, dailyResult.profileId);
 
         return new Response(
-          JSON.stringify({ success: true, reward, streak: newStreak, energy: newEnergy, newAchievements: newAchievementsDaily }),
+          JSON.stringify({
+            success: true,
+            reward: dailyResult.reward,
+            streak: dailyResult.streak,
+            energy: dailyResult.energy,
+            newAchievements: newAchievementsDaily,
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1255,36 +1216,25 @@ Deno.serve(async (req) => {
         const purchasedTypes = (todayUpgrades || []).map(u => u.upgrade_type);
         const comboTypes = combo.combo as string[];
         const matched = comboTypes.filter(t => purchasedTypes.includes(t));
-        const isComplete = matched.length === 3 && !alreadyClaimed;
+        const couldComplete = matched.length === 3 && !alreadyClaimed;
+        let actuallyClaimed = false;
 
-        // Auto-claim if complete
-        if (isComplete) {
-          const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('energy')
-            .eq('id', profile.id)
-            .single();
-
-          if (userProfile) {
-            await supabase
-              .from('profiles')
-              .update({ energy: userProfile.energy + 1000 })
-              .eq('id', profile.id);
-
-            await supabase
-              .from('daily_combos')
-              .update({ claimed_by: [...claimedBy, profile.id] })
-              .eq('date', today);
-          }
+        // Atomic auto-claim if complete
+        if (couldComplete) {
+          const { data: claimRpc } = await supabase.rpc('claim_daily_combo_atomic', {
+            p_profile_id: profile.id,
+            p_date: today,
+          });
+          actuallyClaimed = (claimRpc as any)?.claimed === true;
         }
 
         return new Response(
           JSON.stringify({
             combo: comboTypes,
             matched,
-            isComplete,
-            alreadyClaimed,
-            reward: isComplete ? 1000 : 0,
+            isComplete: actuallyClaimed,
+            alreadyClaimed: alreadyClaimed || (couldComplete && !actuallyClaimed),
+            reward: actuallyClaimed ? 1000 : 0,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
