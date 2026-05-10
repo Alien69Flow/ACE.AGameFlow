@@ -481,7 +481,15 @@ Deno.serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
-        
+
+        // Whitelist mission IDs against server-side catalog
+        if (!MISSION_REWARDS[missionId]) {
+          return new Response(
+            JSON.stringify({ error: 'Unknown mission' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const { data: profile } = await supabase
           .from('profiles')
           .select('id')
