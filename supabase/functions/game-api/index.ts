@@ -59,6 +59,12 @@ async function validateTelegramInitData(initData: string, botToken: string): Pro
       return { valid: false };
     }
     
+    // Replay protection: reject initData older than 1 hour
+    const authDate = parseInt(params.get('auth_date') || '0', 10);
+    if (!authDate || (Math.floor(Date.now() / 1000) - authDate) > 3600) {
+      return { valid: false };
+    }
+    
     const userStr = params.get('user');
     if (!userStr) return { valid: false };
     
@@ -98,6 +104,19 @@ const ACHIEVEMENT_CATALOG = [
 ];
 
 const TOTAL_MISSIONS_COUNT = 6; // Number of missions in the game
+
+// Server-side mission reward catalog (canonical source of truth)
+const MISSION_REWARDS: Record<string, number> = {
+  tg_channel: 100,
+  tg_group: 100,
+  x_follow: 100,
+  facebook: 50,
+  instagram: 50,
+  linkedin: 50,
+};
+
+// Cost (in energy) for activating the 24h 2x multiplier
+const MULTIPLIER_ENERGY_COST = 5000;
 
 async function checkAchievements(supabase: ReturnType<typeof createClient>, profileId: string): Promise<{ id: string; name: string; icon: string; reward: number }[]> {
   // Get profile data
@@ -494,11 +513,20 @@ Deno.serve(async (req) => {
       
       case 'claim-mission': {
         const body = await req.json();
-        const { missionId, reward } = body;
+        const { missionId } = body;
         
-        if (!missionId || typeof missionId !== 'string' || typeof reward !== 'number' || reward <= 0 || reward > 1000) {
+        if (!missionId || typeof missionId !== 'string') {
           return new Response(
             JSON.stringify({ error: 'Invalid request' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Look up canonical reward server-side; ignore any client-supplied amount
+        const reward = MISSION_REWARDS[missionId];
+        if (!reward) {
+          return new Response(
+            JSON.stringify({ error: 'Unknown mission' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -564,7 +592,7 @@ Deno.serve(async (req) => {
         const newAchievementsMission = await checkAchievements(supabase, profile.id);
 
         return new Response(
-          JSON.stringify({ success: true, energy: newEnergy, newAchievements: newAchievementsMission }),
+          JSON.stringify({ success: true, energy: newEnergy, reward, newAchievements: newAchievementsMission }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -813,7 +841,7 @@ Deno.serve(async (req) => {
       case 'buy-multiplier': {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, multiplier, multiplier_expires_at')
+          .select('id, energy, multiplier, multiplier_expires_at')
           .eq('telegram_id', telegramUserId)
           .single();
 
@@ -824,15 +852,36 @@ Deno.serve(async (req) => {
           );
         }
 
+        // Block stacking: require previous multiplier to have expired
+        if (
+          profile.multiplier > 1 &&
+          profile.multiplier_expires_at &&
+          new Date(profile.multiplier_expires_at) > new Date()
+        ) {
+          return new Response(
+            JSON.stringify({ error: 'Multiplier already active' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Charge energy cost server-side
+        if (profile.energy < MULTIPLIER_ENERGY_COST) {
+          return new Response(
+            JSON.stringify({ error: 'Not enough energy', cost: MULTIPLIER_ENERGY_COST }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        const newEnergy = profile.energy - MULTIPLIER_ENERGY_COST;
 
         await supabase
           .from('profiles')
-          .update({ multiplier: 2, multiplier_expires_at: expiresAt })
+          .update({ energy: newEnergy, multiplier: 2, multiplier_expires_at: expiresAt })
           .eq('id', profile.id);
 
         return new Response(
-          JSON.stringify({ success: true, multiplier: 2, expiresAt }),
+          JSON.stringify({ success: true, multiplier: 2, expiresAt, energy: newEnergy }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1606,49 +1655,14 @@ Deno.serve(async (req) => {
       }
 
       case 'apply-energy-pack': {
-        const body = await req.json();
-        const { packId } = body;
-
-        // Valid pack IDs and their stamina gains
-        const ENERGY_PACK_MAP: Record<string, number> = {
-          flux_starter: 1000,
-          tesla_burst: 5000,
-          void_core: 20000,
-          quantum_surge: 50000,
-          singularity: 100000,
-        };
-
-        const staminaGain = ENERGY_PACK_MAP[packId];
-        if (!staminaGain) {
-          return new Response(
-            JSON.stringify({ error: 'Invalid pack ID' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, stamina, max_stamina')
-          .eq('telegram_id', telegramUserId)
-          .single();
-
-        if (!profile) {
-          return new Response(
-            JSON.stringify({ error: 'Profile not found' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const newStamina = profile.stamina + staminaGain;
-
-        await supabase
-          .from('profiles')
-          .update({ stamina: newStamina, last_stamina_update: new Date().toISOString() })
-          .eq('id', profile.id);
-
+        // Disabled until on-chain TON payment verification is implemented.
+        // Granting stamina without verifying a paid transaction would allow
+        // any authenticated user to claim unlimited free packs.
         return new Response(
-          JSON.stringify({ success: true, stamina: newStamina, staminaGain }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            error: 'Energy packs are temporarily disabled. Payment verification is not yet configured.',
+          }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
