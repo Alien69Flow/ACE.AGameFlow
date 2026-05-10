@@ -181,7 +181,7 @@ const Index = () => {
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="font-display text-primary text-glow">Cargando AlienFlow...</p>
+          <p className="font-display text-primary text-glow">Cargando ACE FLOW...</p>
         </div>
       </div>
     );
