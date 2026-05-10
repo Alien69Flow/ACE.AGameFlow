@@ -99,6 +99,19 @@ const ACHIEVEMENT_CATALOG = [
 
 const TOTAL_MISSIONS_COUNT = 6; // Number of missions in the game
 
+// Server-side mission reward catalog (canonical source of truth)
+const MISSION_REWARDS: Record<string, number> = {
+  tg_channel: 100,
+  tg_group: 100,
+  x_follow: 100,
+  facebook: 50,
+  instagram: 50,
+  linkedin: 50,
+};
+
+// Cost (in energy) for activating the 24h 2x multiplier
+const MULTIPLIER_ENERGY_COST = 5000;
+
 async function checkAchievements(supabase: ReturnType<typeof createClient>, profileId: string): Promise<{ id: string; name: string; icon: string; reward: number }[]> {
   // Get profile data
   const { data: profile } = await supabase
