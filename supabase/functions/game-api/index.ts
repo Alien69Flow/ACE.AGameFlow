@@ -1216,36 +1216,25 @@ Deno.serve(async (req) => {
         const purchasedTypes = (todayUpgrades || []).map(u => u.upgrade_type);
         const comboTypes = combo.combo as string[];
         const matched = comboTypes.filter(t => purchasedTypes.includes(t));
-        const isComplete = matched.length === 3 && !alreadyClaimed;
+        const couldComplete = matched.length === 3 && !alreadyClaimed;
+        let actuallyClaimed = false;
 
-        // Auto-claim if complete
-        if (isComplete) {
-          const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('energy')
-            .eq('id', profile.id)
-            .single();
-
-          if (userProfile) {
-            await supabase
-              .from('profiles')
-              .update({ energy: userProfile.energy + 1000 })
-              .eq('id', profile.id);
-
-            await supabase
-              .from('daily_combos')
-              .update({ claimed_by: [...claimedBy, profile.id] })
-              .eq('date', today);
-          }
+        // Atomic auto-claim if complete
+        if (couldComplete) {
+          const { data: claimRpc } = await supabase.rpc('claim_daily_combo_atomic', {
+            p_profile_id: profile.id,
+            p_date: today,
+          });
+          actuallyClaimed = (claimRpc as any)?.claimed === true;
         }
 
         return new Response(
           JSON.stringify({
             combo: comboTypes,
             matched,
-            isComplete,
-            alreadyClaimed,
-            reward: isComplete ? 1000 : 0,
+            isComplete: actuallyClaimed,
+            alreadyClaimed: alreadyClaimed || (couldComplete && !actuallyClaimed),
+            reward: actuallyClaimed ? 1000 : 0,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
