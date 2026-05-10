@@ -59,6 +59,12 @@ async function validateTelegramInitData(initData: string, botToken: string): Pro
       return { valid: false };
     }
     
+    // Replay protection: reject initData older than 1 hour
+    const authDate = parseInt(params.get('auth_date') || '0', 10);
+    if (!authDate || (Math.floor(Date.now() / 1000) - authDate) > 3600) {
+      return { valid: false };
+    }
+    
     const userStr = params.get('user');
     if (!userStr) return { valid: false };
     
