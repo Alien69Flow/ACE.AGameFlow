@@ -709,57 +709,27 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, energy, referred_by, referral_code')
-          .eq('telegram_id', telegramUserId)
-          .single();
+        const { data: rpcResult, error: rpcErr } = await supabase.rpc('apply_referral_atomic', {
+          p_telegram_id: telegramUserId,
+          p_referral_code: referralCode,
+        });
 
-        if (!profile) {
+        if (rpcErr) {
           return new Response(
-            JSON.stringify({ error: 'Profile not found' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: 'Failed to apply referral' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        if (profile.referred_by) {
+        const refResult = rpcResult as any;
+        if (refResult?.error) {
           return new Response(
-            JSON.stringify({ error: 'Already used a referral code' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: refResult.error }),
+            { status: refResult.status || 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        if (profile.referral_code === referralCode) {
-          return new Response(
-            JSON.stringify({ error: 'Cannot use your own code' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const { data: referrer } = await supabase
-          .from('profiles')
-          .select('id, energy, referral_count')
-          .eq('referral_code', referralCode)
-          .single();
-
-        if (!referrer) {
-          return new Response(
-            JSON.stringify({ error: 'Referral code not found' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        await supabase
-          .from('profiles')
-          .update({ referred_by: referrer.id, energy: profile.energy + 50 })
-          .eq('id', profile.id);
-
-        await supabase
-          .from('profiles')
-          .update({ energy: referrer.energy + 100, referral_count: referrer.referral_count + 1 })
-          .eq('id', referrer.id);
-
-        const newAchievementsRef = await checkAchievements(supabase, profile.id);
+        const newAchievementsRef = await checkAchievements(supabase, refResult.profileId);
 
         return new Response(
           JSON.stringify({ success: true, energyGained: 50, newAchievements: newAchievementsRef }),
