@@ -24,7 +24,7 @@ const PARTICLES = Array.from({ length: 30 }, (_, i) => ({
 }));
 
 const STATS = [
-  { label: '3.14M+', sub: 'MINERS' },
+  { label: '(π) > (Φ)', sub: 'MINERS' },
   { label: '∞', sub: 'ENERGY' },
   { label: 'TON', sub: 'BLOCKCHAIN' },
 ];
@@ -232,7 +232,7 @@ export const LandingScreen = () => {
             className="glitch text-5xl md:text-7xl font-black text-primary tracking-[0.12em]"
             style={{ fontFamily: "'Exo 2', 'Orbitron', sans-serif" }}
           >
-            ALIENFLOW
+            ACE FLOW
           </h1>
           <p
             className="text-[10px] md:text-xs text-muted-foreground mt-2 tracking-[0.2em] uppercase h-4"
@@ -244,30 +244,7 @@ export const LandingScreen = () => {
         </div>
 
         {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.8, duration: 0.5 }}
-          className="flex items-center justify-center gap-6 md:gap-8"
-        >
-          {STATS.map((stat, i) => (
-            <div key={i} className="text-center">
-              <span
-                className="text-lg md:text-2xl font-bold text-secondary text-glow-gold"
-                style={{ fontFamily: "'Orbitron', sans-serif" }}
-              >
-                {stat.label}
-              </span>
-              <span
-                className="block text-[8px] md:text-[9px] text-muted-foreground tracking-[0.3em] mt-0.5"
-                style={{ fontFamily: "'Rajdhani', sans-serif" }}
-              >
-                {stat.sub}
-              </span>
-            </div>
-          ))}
-        </motion.div>
-
+...
         {/* CTA */}
         <motion.a
           href="https://t.me/Alien69Bot"
@@ -279,29 +256,19 @@ export const LandingScreen = () => {
           className="relative group w-full max-w-xs"
           onMouseEnter={playWhoosh}
         >
-          <motion.div
-            className="absolute -inset-3 rounded-2xl blur-2xl"
-            style={{ background: 'hsl(var(--primary) / 0.2)' }}
-            animate={{ opacity: [0.3, 0.7, 0.3], scale: [1, 1.04, 1] }}
-            transition={{ duration: 2.5, repeat: Infinity }}
-          />
-          <motion.div
-            className="absolute -inset-px rounded-2xl border border-primary/50"
-            animate={{ opacity: [0.3, 1, 0.3] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          />
+...
           <div className="relative px-6 py-4 rounded-2xl border-2 border-primary bg-card/90 backdrop-blur-md hover:bg-primary/10 transition-all duration-300 box-glow text-center">
             <span
               className="text-xl md:text-2xl font-black text-primary text-glow tracking-wider block"
               style={{ fontFamily: "'Orbitron', sans-serif" }}
             >
-              ENTER THE GRID
+              ​A Cash Energy
             </span>
             <span
               className="text-[9px] text-muted-foreground mt-1 tracking-[0.2em] block"
               style={{ fontFamily: "'Rajdhani', sans-serif" }}
             >
-              INITIALIZE VIA TELEGRAM
+              ENTER THE GRID and INITIALIZE VIA TELEGRAM
             </span>
           </div>
         </motion.a>
@@ -370,7 +337,7 @@ export const LandingScreen = () => {
           className="text-[8px] text-muted-foreground/40 text-center tracking-[0.2em] mt-1"
           style={{ fontFamily: "'Rajdhani', sans-serif" }}
         >
-          ALIENFLOW v1.0 · TON BLOCKCHAIN · DAO POWERED
+          ACE FLOW v1.0 · TON BLOCKCHAIN · DAO POWERED
         </motion.p>
       </div>
     </div>
