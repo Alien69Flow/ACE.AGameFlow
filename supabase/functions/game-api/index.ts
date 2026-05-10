@@ -738,52 +738,35 @@ Deno.serve(async (req) => {
       }
 
       case 'claim-daily': {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('id, energy, last_daily_claim, daily_streak')
-          .eq('telegram_id', telegramUserId)
-          .single();
+        const { data: dailyRpc, error: dailyErr } = await supabase.rpc('claim_daily_atomic', {
+          p_telegram_id: telegramUserId,
+        });
 
-        if (!profile) {
+        if (dailyErr) {
           return new Response(
-            JSON.stringify({ error: 'Profile not found' }),
-            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: 'Failed to claim daily' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        const now = new Date();
-        const lastClaim = profile.last_daily_claim ? new Date(profile.last_daily_claim) : null;
-
-        if (lastClaim) {
-          const hoursSinceClaim = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60);
-          if (hoursSinceClaim < 24) {
-            return new Response(
-              JSON.stringify({ error: 'Already claimed today', streak: profile.daily_streak }),
-              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            );
-          }
+        const dailyResult = dailyRpc as any;
+        if (dailyResult?.error) {
+          return new Response(
+            JSON.stringify({ error: dailyResult.error, streak: dailyResult.streak }),
+            { status: dailyResult.status || 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
-        let newStreak = 1;
-        if (lastClaim) {
-          const hoursSinceClaim = (now.getTime() - lastClaim.getTime()) / (1000 * 60 * 60);
-          if (hoursSinceClaim < 48) {
-            newStreak = Math.min(profile.daily_streak + 1, 10);
-          }
-        }
-
-        const reward = Math.min(newStreak * 10, 100);
-        const newEnergy = profile.energy + reward;
-
-        await supabase
-          .from('profiles')
-          .update({ energy: newEnergy, last_daily_claim: now.toISOString(), daily_streak: newStreak })
-          .eq('id', profile.id);
-
-        const newAchievementsDaily = await checkAchievements(supabase, profile.id);
+        const newAchievementsDaily = await checkAchievements(supabase, dailyResult.profileId);
 
         return new Response(
-          JSON.stringify({ success: true, reward, streak: newStreak, energy: newEnergy, newAchievements: newAchievementsDaily }),
+          JSON.stringify({
+            success: true,
+            reward: dailyResult.reward,
+            streak: dailyResult.streak,
+            energy: dailyResult.energy,
+            newAchievements: newAchievementsDaily,
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
