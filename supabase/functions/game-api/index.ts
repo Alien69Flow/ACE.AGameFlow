@@ -841,7 +841,7 @@ Deno.serve(async (req) => {
       case 'buy-multiplier': {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, multiplier, multiplier_expires_at')
+          .select('id, energy, multiplier, multiplier_expires_at')
           .eq('telegram_id', telegramUserId)
           .single();
 
@@ -852,15 +852,36 @@ Deno.serve(async (req) => {
           );
         }
 
+        // Block stacking: require previous multiplier to have expired
+        if (
+          profile.multiplier > 1 &&
+          profile.multiplier_expires_at &&
+          new Date(profile.multiplier_expires_at) > new Date()
+        ) {
+          return new Response(
+            JSON.stringify({ error: 'Multiplier already active' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Charge energy cost server-side
+        if (profile.energy < MULTIPLIER_ENERGY_COST) {
+          return new Response(
+            JSON.stringify({ error: 'Not enough energy', cost: MULTIPLIER_ENERGY_COST }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+        const newEnergy = profile.energy - MULTIPLIER_ENERGY_COST;
 
         await supabase
           .from('profiles')
-          .update({ multiplier: 2, multiplier_expires_at: expiresAt })
+          .update({ energy: newEnergy, multiplier: 2, multiplier_expires_at: expiresAt })
           .eq('id', profile.id);
 
         return new Response(
-          JSON.stringify({ success: true, multiplier: 2, expiresAt }),
+          JSON.stringify({ success: true, multiplier: 2, expiresAt, energy: newEnergy }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
