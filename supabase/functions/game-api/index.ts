@@ -513,11 +513,20 @@ Deno.serve(async (req) => {
       
       case 'claim-mission': {
         const body = await req.json();
-        const { missionId, reward } = body;
+        const { missionId } = body;
         
-        if (!missionId || typeof missionId !== 'string' || typeof reward !== 'number' || reward <= 0 || reward > 1000) {
+        if (!missionId || typeof missionId !== 'string') {
           return new Response(
             JSON.stringify({ error: 'Invalid request' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Look up canonical reward server-side; ignore any client-supplied amount
+        const reward = MISSION_REWARDS[missionId];
+        if (!reward) {
+          return new Response(
+            JSON.stringify({ error: 'Unknown mission' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -583,7 +592,7 @@ Deno.serve(async (req) => {
         const newAchievementsMission = await checkAchievements(supabase, profile.id);
 
         return new Response(
-          JSON.stringify({ success: true, energy: newEnergy, newAchievements: newAchievementsMission }),
+          JSON.stringify({ success: true, energy: newEnergy, reward, newAchievements: newAchievementsMission }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
