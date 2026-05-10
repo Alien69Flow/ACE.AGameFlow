@@ -78,7 +78,7 @@ interface NetworkScreenProps {
 }
 
 const ecosystemLinks = [
-  { name: 'AlienFlow DAO (DApp)', icon: '🛸', url: 'https://alienflow.space' },
+  { name: 'ACE FLOW DAO (DApp)', icon: '🛸', url: 'https://alienflow.space' },
   { name: 'Discord', icon: '💬', comingSoon: true },
   { name: 'Email', icon: '📧', url: 'mailto:alien69flow@proton.me' },
   { name: 'GitBook', icon: '📚', url: 'https://alienflowspace.gitbook.io/dao/' },
