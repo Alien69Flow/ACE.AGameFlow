@@ -113,6 +113,9 @@ const MISSION_REWARDS: Record<string, number> = {
   facebook: 50,
   instagram: 50,
   linkedin: 50,
+  aitor_visit: 50,
+  adex_register: 100,
+  atrip_join: 100,
 };
 
 // Cost (in energy) for activating the 24h 2x multiplier
@@ -178,10 +181,21 @@ async function checkAchievements(supabase: ReturnType<typeof createClient>, prof
 }
 
 const UPGRADE_CATALOG: Record<string, { values: number[]; costs: number[]; maxLevel: number }> = {
-  tap_power:      { values: [1, 2, 3, 5, 8],         costs: [100, 500, 2000, 8000, 25000],  maxLevel: 5 },
-  passive_income: { values: [0, 5, 15, 30, 60],      costs: [200, 1000, 5000, 15000, 40000], maxLevel: 5 },
-  max_stamina:    { values: [100, 200, 500, 1000, 2000], costs: [150, 800, 3000, 10000, 30000], maxLevel: 5 },
-  regen_speed:    { values: [1, 2, 3, 5, 8],          costs: [300, 1200, 4000, 12000, 35000], maxLevel: 5 },
+  tap_power:         { values: [1, 2, 3, 5, 8],         costs: [100, 500, 2000, 8000, 25000],  maxLevel: 5 },
+  passive_income:    { values: [0, 5, 15, 30, 60],      costs: [200, 1000, 5000, 15000, 40000], maxLevel: 5 },
+  max_stamina:       { values: [100, 200, 500, 1000, 2000], costs: [150, 800, 3000, 10000, 30000], maxLevel: 5 },
+  regen_speed:       { values: [1, 2, 3, 5, 8],          costs: [300, 1200, 4000, 12000, 35000], maxLevel: 5 },
+  solar_harvester:   { values: [0, 5, 10, 20, 40],      costs: [500, 2000, 8000, 25000, 60000], maxLevel: 5 },
+  quantum_reactor:   { values: [0, 5, 10, 15, 25],      costs: [800, 3000, 10000, 30000, 80000], maxLevel: 5 },
+  shield_generator:  { values: [0, 1, 2, 3, 5],         costs: [400, 1500, 6000, 18000, 50000], maxLevel: 5 },
+  orbital_station:   { values: [0, 50, 100, 200, 500],  costs: [1000, 4000, 15000, 40000, 100000], maxLevel: 5 },
+};
+
+// Minigame catalog: reward per point scored (capped)
+const MINIGAME_CATALOG: Record<string, { rewardPerPoint: number; maxReward: number; dailyPlayLimit: number }> = {
+  memory_match:   { rewardPerPoint: 2,  maxReward: 200, dailyPlayLimit: 5 },
+  reaction_rush:  { rewardPerPoint: 3,  maxReward: 300, dailyPlayLimit: 5 },
+  asteroid_blitz: { rewardPerPoint: 1,  maxReward: 150, dailyPlayLimit: 5 },
 };
 
 Deno.serve(async (req) => {
@@ -202,11 +216,14 @@ Deno.serve(async (req) => {
     }
 
     const initData = req.headers.get('x-telegram-init-data');
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
     
     let telegramUserId: string;
     let telegramUsername: string | null = null;
     let startParam: string | undefined;
     
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
     if (initData) {
       const validation = await validateTelegramInitData(initData, botToken);
       if (!validation.valid || !validation.user) {
@@ -218,14 +235,56 @@ Deno.serve(async (req) => {
       telegramUserId = validation.user.id.toString();
       telegramUsername = validation.user.username || validation.user.first_name || null;
       startParam = validation.startParam;
+    } else if (authHeader && authHeader.startsWith('Bearer ')) {
+      // Web auth: validate Supabase JWT
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(token);
+      if (authError || !authUser) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid session' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      // Look up profile by auth_user_id
+      const { data: webProfile } = await supabase
+        .from('profiles')
+        .select('telegram_id, username')
+        .eq('auth_user_id', authUser.id)
+        .maybeSingle();
+      
+      if (webProfile) {
+        telegramUserId = webProfile.telegram_id;
+        telegramUsername = webProfile.username;
+      } else {
+        // Create new profile for web user
+        const webTelegramId = `web_${authUser.id}`;
+        const { data: newProfile, error: createErr } = await supabase
+          .from('profiles')
+          .insert({
+            telegram_id: webTelegramId,
+            username: authUser.email?.split('@')[0] || 'player',
+            referral_code: generateReferralCode(),
+            auth_user_id: authUser.id,
+          })
+          .select('telegram_id, username')
+          .single();
+        
+        if (createErr || !newProfile) {
+          return new Response(
+            JSON.stringify({ error: 'Failed to create profile' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        telegramUserId = newProfile.telegram_id;
+        telegramUsername = newProfile.username;
+      }
     } else {
       return new Response(
         JSON.stringify({ error: 'Missing authentication' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     const url = new URL(req.url);
     const action = url.pathname.split('/').pop();
@@ -1604,6 +1663,128 @@ Deno.serve(async (req) => {
         );
       }
 
+      case 'submit-minigame-score': {
+        const body = await req.json();
+        const { gameId, score } = body;
+        
+        if (!gameId || !MINIGAME_CATALOG[gameId] || typeof score !== 'number' || score < 0) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid minigame request' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const catalog = MINIGAME_CATALOG[gameId];
+        
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+        
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        // Get or create score record
+        const { data: existingScore } = await supabase
+          .from('minigame_scores')
+          .select('id, high_score, total_plays, last_played_at')
+          .eq('profile_id', profile.id)
+          .eq('game_id', gameId)
+          .maybeSingle();
+        
+        const now = new Date().toISOString();
+        const playsToday = existingScore?.last_played_at ? 1 : 0; // simplified daily limit
+        
+        if (existingScore && playsToday >= catalog.dailyPlayLimit) {
+          // Check if last play was today
+          const lastPlay = new Date(existingScore.last_played_at);
+          const today = new Date();
+          if (lastPlay.toDateString() === today.toDateString() && existingScore.total_plays >= catalog.dailyPlayLimit) {
+            return new Response(
+              JSON.stringify({ error: 'Daily play limit reached for this game' }),
+              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+        
+        // Calculate reward (capped)
+        const reward = Math.min(Math.floor(score * catalog.rewardPerPoint), catalog.maxReward);
+        const isHighScore = !existingScore || score > existingScore.high_score;
+        const newHighScore = isHighScore ? score : existingScore!.high_score;
+        const newTotalPlays = (existingScore?.total_plays || 0) + 1;
+        const newEnergy = profile.energy + reward;
+        
+        if (existingScore) {
+          await supabase
+            .from('minigame_scores')
+            .update({
+              high_score: newHighScore,
+              total_plays: newTotalPlays,
+              last_played_at: now,
+            })
+            .eq('id', existingScore.id);
+        } else {
+          await supabase
+            .from('minigame_scores')
+            .insert({
+              profile_id: profile.id,
+              game_id: gameId,
+              high_score: newHighScore,
+              total_plays: newTotalPlays,
+              last_played_at: now,
+            });
+        }
+        
+        // Grant energy reward
+        if (reward > 0) {
+          await supabase
+            .from('profiles')
+            .update({ energy: newEnergy })
+            .eq('id', profile.id);
+        }
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            reward,
+            energy: newEnergy,
+            isHighScore,
+            highScore: newHighScore,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      case 'get-minigame-scores': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('telegram_id', telegramUserId)
+          .single();
+        
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        const { data: scores } = await supabase
+          .from('minigame_scores')
+          .select('game_id, high_score, total_plays, last_played_at')
+          .eq('profile_id', profile.id);
+        
+        return new Response(
+          JSON.stringify({ scores: scores || [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'apply-energy-pack': {
         // Disabled until on-chain TON payment verification is implemented.
         // Granting stamina without verifying a paid transaction would allow
@@ -1637,3 +1818,4 @@ Deno.serve(async (req) => {
     );
   }
 });
+// v2 - web auth + minigames

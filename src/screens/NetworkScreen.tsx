@@ -89,6 +89,12 @@ const ecosystemLinks = [
   { name: 'TikTok', icon: '🎵', url: 'https://tiktok.com/@Alien69Flow' },
 ];
 
+const daoEcosystemLinks = [
+  { name: 'Aitor.AlienFlow.Space', description: 'Sub-proyecto DAO', icon: '🌐', url: 'https://aitor.alienflow.space' },
+  { name: 'ADEX.AlienFlow.Space', description: 'Plataforma de intercambio', icon: '📊', url: 'https://adex.alienflow.space' },
+  { name: 'ATrip.AlienFlow.Space', description: 'Experiencias y viajes', icon: '🚀', url: 'https://atrip.alienflow.space' },
+];
+
 const legacyCollections = [
   { name: 'Colección Alien69Flow', icon: '🎨', url: 'https://opensea.io/es/Alien69Flow' },
   { name: 'Colección AlienFlowSpace', icon: '🌌', url: 'https://opensea.io/es/AlienFlowSpace' },
@@ -293,6 +299,32 @@ export const NetworkScreen = ({
                   <motion.div key={link.name} initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: index * 0.03 }}>
                     <EcosystemLink {...link} openLink={openLink} />
                   </motion.div>
+                ))}
+              </div>
+            </section>
+
+            {/* DAO Ecosystem Sub-Projects */}
+            <section>
+              <motion.h2 initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="font-display text-base font-bold text-secondary text-glow-gold mb-2">
+                DAO ECOSYSTEM
+              </motion.h2>
+              <div className="space-y-2">
+                {daoEcosystemLinks.map((link, index) => (
+                  <motion.button
+                    key={link.name}
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    onClick={() => openLink(link.url)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-secondary/30 bg-card/80 hover:bg-card/90 hover:border-secondary/50 transition-all"
+                  >
+                    <span className="text-xl">{link.icon}</span>
+                    <div className="flex-1 text-left">
+                      <h3 className="font-display text-sm font-bold text-foreground">{link.name}</h3>
+                      <p className="font-body text-[10px] text-muted-foreground">{link.description}</p>
+                    </div>
+                    <span className="text-[10px] text-secondary/60 font-display">VISITAR →</span>
+                  </motion.button>
                 ))}
               </div>
             </section>

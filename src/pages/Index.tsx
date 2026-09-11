@@ -13,6 +13,7 @@ import { MineScreen } from '@/screens/MineScreen';
 import { NetworkScreen } from '@/screens/NetworkScreen';
 import { UpgradesScreen } from '@/screens/UpgradesScreen';
 import { AirdropScreen } from '@/screens/AirdropScreen';
+import { MinigamesScreen } from '@/screens/MinigamesScreen';
 import { Zap, Trophy, LogOut, Globe } from 'lucide-react';
 
 // Auto-dismiss achievement toast component
@@ -47,7 +48,7 @@ const AchievementToast = ({ achievement, onDismiss }: { achievement: { id: strin
   );
 };
 
-type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop';
+type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop' | 'minigames';
 
 const MISSIONS = [
   // Auto-verified missions (double reward)
@@ -58,6 +59,10 @@ const MISSIONS = [
   { id: 'facebook', name: 'Facebook', url: 'https://www.facebook.com/Alien69Flow', icon: '📘', reward: 50, verifiable: false, verifyType: null },
   { id: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/alien69flow/', icon: '📸', reward: 50, verifiable: false, verifyType: null },
   { id: 'linkedin', name: 'LinkedIn', url: 'https://linkedin.com/company/alienflowspace', icon: '💼', reward: 50, verifiable: false, verifyType: null },
+  // DAO ecosystem missions
+  { id: 'aitor_visit', name: 'Visitar Aitor.AlienFlow', url: 'https://aitor.alienflow.space', icon: '🌐', reward: 50, verifiable: false, verifyType: null },
+  { id: 'adex_register', name: 'Registrarse en ADEX', url: 'https://adex.alienflow.space', icon: '📊', reward: 100, verifiable: false, verifyType: null },
+  { id: 'atrip_join', name: 'Unirse en ATrip', url: 'https://atrip.alienflow.space', icon: '🚀', reward: 100, verifiable: false, verifyType: null },
 ];
 
 const Index = () => {
@@ -101,6 +106,7 @@ const Index = () => {
     newAchievementQueue,
     dismissAchievementNotification,
     applyEnergyPack,
+    submitMinigameScore,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
@@ -120,7 +126,7 @@ const Index = () => {
 
   // Start tutorial if not completed
   useEffect(() => {
-    if (!isLoading && isTelegram && !gameState.tutorialCompleted) {
+    if (!isLoading && (isTelegram || webSessionToken) && !gameState.tutorialCompleted) {
       setTutorialStep(0);
     }
   }, [isLoading, isTelegram, gameState.tutorialCompleted]);
@@ -361,9 +367,13 @@ const Index = () => {
             dailyStreak={gameState.dailyStreak}
           />
         )}
+        {currentScreen === 'minigames' && (
+          <MinigamesScreen
+            key="minigames"
+            onSubmitScore={submitMinigameScore}
+          />
+        )}
       </AnimatePresence>
-
-      {/* Navigation */}
       <Navigation
         currentScreen={currentScreen}
         onNavigate={handleNavigate}

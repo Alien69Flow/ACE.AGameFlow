@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback } from 'react';
-import { Zap, Battery, Clock, MousePointerClick, TrendingUp, Lock } from 'lucide-react';
+import { Zap, Battery, Clock, MousePointerClick, TrendingUp, Lock, Sun, Atom, Shield, Satellite } from 'lucide-react';
 import { useTelegram } from '@/hooks/useTelegram';
 
 interface UpgradeInfo {
@@ -20,10 +20,14 @@ interface UpgradesScreenProps {
 }
 
 const UPGRADE_META: Record<string, { icon: typeof Zap; label: string; unit: string; color: string }> = {
-  tap_power:      { icon: MousePointerClick, label: 'Poder de Toque', unit: '/tap', color: 'text-primary' },
-  passive_income: { icon: TrendingUp,        label: 'Ingreso Pasivo', unit: '/hora', color: 'text-secondary' },
-  max_stamina:    { icon: Battery,           label: 'Stamina Máx',   unit: ' pts', color: 'text-primary' },
-  regen_speed:    { icon: Clock,             label: 'Velocidad Regen', unit: '/min', color: 'text-secondary' },
+  tap_power:         { icon: MousePointerClick, label: 'Poder de Toque', unit: '/tap', color: 'text-primary' },
+  passive_income:    { icon: TrendingUp,        label: 'Ingreso Pasivo', unit: '/hora', color: 'text-secondary' },
+  max_stamina:       { icon: Battery,           label: 'Stamina Máx',   unit: ' pts', color: 'text-primary' },
+  regen_speed:       { icon: Clock,             label: 'Velocidad Regen', unit: '/min', color: 'text-secondary' },
+  solar_harvester:   { icon: Sun,               label: 'Cosechador Solar', unit: '/hora', color: 'text-secondary' },
+  quantum_reactor:   { icon: Atom,              label: 'Reactor Cuántico', unit: '% crit', color: 'text-primary' },
+  shield_generator:  { icon: Shield,            label: 'Generador Escudo', unit: '/día', color: 'text-secondary' },
+  orbital_station:   { icon: Satellite,         label: 'Estación Orbital', unit: '/día', color: 'text-primary' },
 };
 
 export const UpgradesScreen = ({ energy, onFetchUpgrades, onBuyUpgrade }: UpgradesScreenProps) => {

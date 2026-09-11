@@ -215,7 +215,7 @@ export const useGameState = () => {
     };
 
     initProfile();
-  }, [isReady, initData]);
+  }, [isReady, initData, webSessionToken]);
 
   // Stamina regen sync
   useEffect(() => {
@@ -612,6 +612,19 @@ export const useGameState = () => {
     } catch { /* silent */ }
   }, [initData, webSessionToken]);
 
+  const submitMinigameScore = useCallback(async (gameId: string, score: number) => {
+    if (!initData && !webSessionToken) return null;
+    try {
+      const data = await callGameApi('submit-minigame-score', initData || '', { gameId, score }, webSessionToken);
+      if (data.success) {
+        setGameState(prev => ({ ...prev, energy: data.energy }));
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }, [initData, webSessionToken]);
+
   return {
     gameState,
     missions,
@@ -651,5 +664,6 @@ export const useGameState = () => {
     dismissAchievementNotification,
     processNewAchievements,
     applyEnergyPack,
+    submitMinigameScore,
   };
 };
