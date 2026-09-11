@@ -7,12 +7,13 @@ import { StaminaBar } from '@/components/game/StaminaBar';
 import { Navigation } from '@/components/game/Navigation';
 import { Tutorial } from '@/components/game/Tutorial';
 import { LandingScreen } from '@/components/game/LandingScreen';
+import { WebLoginScreen } from '@/components/game/WebLoginScreen';
 import { PlanetScreen } from '@/screens/PlanetScreen';
 import { MineScreen } from '@/screens/MineScreen';
 import { NetworkScreen } from '@/screens/NetworkScreen';
 import { UpgradesScreen } from '@/screens/UpgradesScreen';
 import { AirdropScreen } from '@/screens/AirdropScreen';
-import { Zap, Trophy } from 'lucide-react';
+import { Zap, Trophy, LogOut, Globe } from 'lucide-react';
 
 // Auto-dismiss achievement toast component
 const AchievementToast = ({ achievement, onDismiss }: { achievement: { id: string; name: string; icon: string; reward: number }; onDismiss: () => void }) => {
@@ -60,7 +61,8 @@ const MISSIONS = [
 ];
 
 const Index = () => {
-  const { isReady, isTelegram, openLink, hapticFeedback } = useTelegram();
+  const { isReady, isTelegram, openLink, hapticFeedback, webSessionToken, signOutWeb } = useTelegram();
+  const [showWebLogin, setShowWebLogin] = useState(false);
   const { 
     gameState, 
     missions, 
@@ -188,11 +190,27 @@ const Index = () => {
   }
 
   // Landing state for non-Telegram browsers
-  if (!isTelegram) {
-    return <LandingScreen />;
+  if (!isTelegram && !webSessionToken && !showWebLogin) {
+    return <LandingScreen onPlayInBrowser={() => setShowWebLogin(true)} />;
   }
 
-  // Game loading
+  // Web login screen
+  if (!isTelegram && !webSessionToken && showWebLogin) {
+    const handleLogin = async (email: string, password: string, isSignUp: boolean) => {
+      const { supabase } = await import('@/integrations/supabase/client');
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({ email, password });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      }
+      setShowWebLogin(false);
+    };
+    return <WebLoginScreen onLogin={handleLogin} onBack={() => setShowWebLogin(false)} />;
+  }
+
+  // Loading state for web users waiting for session
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">

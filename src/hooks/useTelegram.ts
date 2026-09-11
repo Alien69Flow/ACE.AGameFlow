@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export const useTelegram = () => {
   const [isReady, setIsReady] = useState(false);
@@ -6,10 +7,10 @@ export const useTelegram = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [isTelegram, setIsTelegram] = useState(false);
+  const [webSessionToken, setWebSessionToken] = useState<string | null>(null);
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
-    // SDK is always loaded, so check if we actually have Telegram context
     const hasTelegramContext = !!(tg?.initData && tg.initData.length > 0);
     
     if (hasTelegramContext) {
@@ -25,13 +26,43 @@ export const useTelegram = () => {
       }
       setIsReady(true);
     } else {
-      // Not in Telegram - show landing page
-      console.warn('No Telegram context detected - showing landing state');
       setIsTelegram(false);
       setInitData(null);
       setUserId(null);
       setUsername(null);
-      setIsReady(true);
+
+      // Check for Supabase web session
+      supabase.auth.getSession().then(({ data }) => {
+        if (data.session?.access_token) {
+          setWebSessionToken(data.session.access_token);
+          const email = data.session.user?.email;
+          if (email) {
+            setUserId(data.session.user!.id);
+            setUsername(email.split('@')[0]);
+          }
+        }
+        setIsReady(true);
+      });
+
+      // Listen for auth state changes
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.access_token) {
+          setWebSessionToken(session.access_token);
+          const email = session.user?.email;
+          if (email) {
+            setUserId(session.user!.id);
+            setUsername(email.split('@')[0]);
+          }
+        } else {
+          setWebSessionToken(null);
+          setUserId(null);
+          setUsername(null);
+        }
+      });
+
+      return () => {
+        listener.subscription.unsubscribe();
+      };
     }
   }, []);
 
@@ -51,6 +82,13 @@ export const useTelegram = () => {
     }
   }, []);
 
+  const signOutWeb = useCallback(async () => {
+    await supabase.auth.signOut();
+    setWebSessionToken(null);
+    setUserId(null);
+    setUsername(null);
+  }, []);
+
   return {
     isReady,
     initData,
@@ -59,5 +97,7 @@ export const useTelegram = () => {
     hapticFeedback,
     openLink,
     isTelegram,
+    webSessionToken,
+    signOutWeb,
   };
 };

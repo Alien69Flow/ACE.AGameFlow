@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Send, Globe, MessageCircle, Rocket, BookOpen, FileText,
-  Instagram, Facebook, Linkedin, Music, AtSign, Github, MessageSquare
+  Instagram, Facebook, Linkedin, Music, AtSign, Github, MessageSquare, Globe2
 } from 'lucide-react';
 
 const RINGS = [
@@ -98,7 +98,7 @@ function useHoverSound() {
   return { playBlip, playWhoosh };
 }
 
-export const LandingScreen = () => {
+export const LandingScreen = ({ onPlayInBrowser }: { onPlayInBrowser?: () => void }) => {
   const [typedText, setTypedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
   const { playBlip, playWhoosh } = useHoverSound();
@@ -272,6 +272,33 @@ export const LandingScreen = () => {
             </span>
           </div>
         </motion.a>
+
+        {/* Play in Browser CTA */}
+        {onPlayInBrowser && (
+          <motion.button
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 2.4, duration: 0.6, type: 'spring', stiffness: 120 }}
+            onClick={onPlayInBrowser}
+            onMouseEnter={playWhoosh}
+            className="relative group w-full max-w-xs"
+          >
+            <div className="relative px-6 py-3 rounded-2xl border-2 border-secondary/60 bg-card/90 backdrop-blur-md hover:bg-secondary/10 transition-all duration-300 box-glow-gold text-center">
+              <span
+                className="text-lg md:text-xl font-bold text-secondary text-glow-gold tracking-wider block"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                PLAY IN BROWSER
+              </span>
+              <span
+                className="text-[9px] text-muted-foreground mt-0.5 tracking-[0.2em] block"
+                style={{ fontFamily: "'Rajdhani', sans-serif" }}
+              >
+                NO TELEGRAM NEEDED · EMAIL OR WALLET
+              </span>
+            </div>
+          </motion.button>
+        )}
 
         {/* Social Links Grid */}
         <div className="grid grid-cols-5 max-[360px]:grid-cols-4 gap-2 mt-2 w-full max-w-sm">

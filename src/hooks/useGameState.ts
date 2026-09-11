@@ -3,6 +3,7 @@ import { useTelegram } from './useTelegram';
 import { toast } from 'sonner';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 interface GameState {
   energy: number;
@@ -80,13 +81,20 @@ interface UpgradeInfo {
   canAfford: boolean;
 }
 
-async function callGameApi(endpoint: string, initData: string, body?: object) {
+async function callGameApi(endpoint: string, initData: string, body?: object, webToken?: string | null) {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (webToken) {
+    headers['Authorization'] = `Bearer ${webToken}`;
+    headers['apikey'] = SUPABASE_ANON_KEY;
+  } else {
+    headers['x-telegram-init-data'] = initData;
+  }
+
   const response = await fetch(`${SUPABASE_URL}/functions/v1/game-api/${endpoint}`, {
     method: body ? 'POST' : 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-telegram-init-data': initData,
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   
@@ -99,7 +107,7 @@ async function callGameApi(endpoint: string, initData: string, body?: object) {
 }
 
 export const useGameState = () => {
-  const { initData, isReady } = useTelegram();
+  const { initData, isReady, webSessionToken } = useTelegram();
   const [gameState, setGameState] = useState<GameState>({
     energy: 0,
     stamina: 100,
@@ -138,11 +146,11 @@ export const useGameState = () => {
 
   // Init profile
   useEffect(() => {
-    if (!isReady || !initData) return;
+    if (!isReady || (!initData && !webSessionToken)) return;
 
     const initProfile = async () => {
       try {
-        const data = await callGameApi('init-profile', initData);
+        const data = await callGameApi('init-profile', initData || '', undefined, webSessionToken);
         
         if (data.profile) {
           const p = data.profile;
@@ -211,12 +219,12 @@ export const useGameState = () => {
 
   // Stamina regen sync
   useEffect(() => {
-    if (!gameState.profileId || !initData) return;
+    if (!isReady || (!initData && !webSessionToken)) return;
 
     staminaIntervalRef.current = setInterval(async () => {
       if (gameState.stamina < gameState.maxStamina && !isMiningRef.current) {
         try {
-          const data = await callGameApi('sync-stamina', initData);
+          const data = await callGameApi('sync-stamina', initData || '', undefined, webSessionToken);
           setGameState(prev => ({ 
             ...prev, 
             stamina: data.stamina,
@@ -229,7 +237,7 @@ export const useGameState = () => {
     return () => {
       if (staminaIntervalRef.current) clearInterval(staminaIntervalRef.current);
     };
-  }, [gameState.profileId, gameState.stamina, gameState.maxStamina, initData]);
+  }, [gameState.profileId, gameState.stamina, gameState.maxStamina, initData, webSessionToken]);
 
   const lastTapTimeRef = useRef(0);
 
@@ -238,7 +246,7 @@ export const useGameState = () => {
     if (now - lastTapTimeRef.current < 150) return false; // 150ms cooldown
     lastTapTimeRef.current = now;
 
-    if (gameState.stamina <= 0 || !gameState.profileId || !initData || isMiningRef.current) return false;
+    if (gameState.stamina <= 0 || !gameState.profileId || (!initData && !webSessionToken) || isMiningRef.current) return false;
 
     isMiningRef.current = true;
 
@@ -251,7 +259,7 @@ export const useGameState = () => {
     }));
 
     try {
-      const data = await callGameApi('tap', initData);
+      const data = await callGameApi('tap', initData || '', undefined, webSessionToken);
       
       if (!data.success) {
         setGameState(prev => ({
@@ -280,27 +288,27 @@ export const useGameState = () => {
     } finally {
       isMiningRef.current = false;
     }
-  }, [gameState.stamina, gameState.profileId, gameState.multiplier, gameState.multiplierExpiresAt, initData]);
+  }, [gameState.stamina, gameState.profileId, gameState.multiplier, gameState.multiplierExpiresAt, initData, webSessionToken]);
 
   const startMission = useCallback(async (missionId: string) => {
-    if (!gameState.profileId || !initData) return;
+    if (!gameState.profileId || (!initData && !webSessionToken)) return;
     try {
-      const data = await callGameApi('start-mission', initData, { missionId });
+      const data = await callGameApi('start-mission', initData || '', { missionId }, webSessionToken);
       setMissions(prev => prev.map(m => 
         m.id === missionId ? { ...m, startedAt: new Date(data.startedAt) } : m
       ));
     } catch {
       toast.error('❌ No se pudo iniciar la misión');
     }
-  }, [gameState.profileId, initData]);
+  }, [gameState.profileId, initData, webSessionToken]);
 
   const claimMission = useCallback(async (missionId: string, reward: number) => {
-    if (!gameState.profileId || !initData) return false;
+    if (!gameState.profileId || (!initData && !webSessionToken)) return false;
     const mission = missions.find(m => m.id === missionId);
     if (!mission?.startedAt || mission.claimed) return false;
 
     try {
-      const data = await callGameApi('claim-mission', initData, { missionId, reward });
+      const data = await callGameApi('claim-mission', initData || '', { missionId, reward }, webSessionToken);
       if (data.success) {
         setGameState(prev => ({ ...prev, energy: data.energy }));
         setMissions(prev => prev.map(m => 
@@ -314,21 +322,21 @@ export const useGameState = () => {
       toast.error('❌ Error al reclamar misión');
       return false;
     }
-  }, [gameState.profileId, missions, initData]);
+  }, [gameState.profileId, missions, initData, webSessionToken]);
 
   const completeTutorial = useCallback(async () => {
-    if (!gameState.profileId || !initData) return;
+    if (!gameState.profileId || (!initData && !webSessionToken)) return;
     try {
-      await callGameApi('complete-tutorial', initData);
+      await callGameApi('complete-tutorial', initData || '', undefined, webSessionToken);
       setGameState(prev => ({ ...prev, tutorialCompleted: true }));
     } catch { /* Silent fail */ }
-  }, [gameState.profileId, initData]);
+  }, [gameState.profileId, initData, webSessionToken]);
 
   // Referral
   const applyReferral = useCallback(async (referralCode: string) => {
-    if (!initData) return { success: false, error: 'Not ready' };
+    if (!initData && !webSessionToken) return { success: false, error: 'Not ready' };
     try {
-      const data = await callGameApi('apply-referral', initData, { referralCode });
+      const data = await callGameApi('apply-referral', initData || '', { referralCode }, webSessionToken);
       if (data.success) {
         setGameState(prev => ({ 
           ...prev, 
@@ -345,9 +353,9 @@ export const useGameState = () => {
 
   // Daily reward
   const claimDaily = useCallback(async () => {
-    if (!initData) return null;
+    if (!initData && !webSessionToken) return null;
     try {
-      const data = await callGameApi('claim-daily', initData);
+      const data = await callGameApi('claim-daily', initData || '', undefined, webSessionToken);
       if (data.success) {
         setGameState(prev => ({ 
           ...prev, 
@@ -362,13 +370,13 @@ export const useGameState = () => {
     } catch {
       return null;
     }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   // Leaderboard
   const fetchLeaderboard = useCallback(async () => {
-    if (!initData) return;
+    if (!initData && !webSessionToken) return;
     try {
-      const data = await callGameApi('leaderboard', initData);
+      const data = await callGameApi('leaderboard', initData || '', undefined, webSessionToken);
       setLeaderboard(data.leaderboard || []);
       setUserRank(data.userRank);
     } catch { /* silent */ }
@@ -376,9 +384,9 @@ export const useGameState = () => {
 
   // Activate multiplier
   const activateMultiplier = useCallback(async () => {
-    if (!initData) return false;
+    if (!initData && !webSessionToken) return false;
     try {
-      const data = await callGameApi('buy-multiplier', initData);
+      const data = await callGameApi('buy-multiplier', initData || '', undefined, webSessionToken);
       if (data.success) {
         setGameState(prev => ({
           ...prev,
@@ -393,23 +401,23 @@ export const useGameState = () => {
       toast.error('❌ Error al activar multiplicador');
       return false;
     }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   // Upgrades
   const fetchUpgrades = useCallback(async () => {
-    if (!initData) return null;
+    if (!initData && !webSessionToken) return null;
     try {
-      const data = await callGameApi('get-upgrades', initData);
+      const data = await callGameApi('get-upgrades', initData || '', undefined, webSessionToken);
       return data as { upgrades: UpgradeInfo[]; energy: number };
     } catch {
       return null;
     }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   const buyUpgrade = useCallback(async (upgradeType: string) => {
-    if (!initData) return null;
+    if (!initData && !webSessionToken) return null;
     try {
-      const data = await callGameApi('buy-upgrade', initData, { upgradeType });
+      const data = await callGameApi('buy-upgrade', initData || '', { upgradeType }, webSessionToken);
       if (data.success) {
         setGameState(prev => ({
           ...prev,
@@ -447,9 +455,9 @@ export const useGameState = () => {
 
   // Clan actions
   const createClan = useCallback(async (name: string) => {
-    if (!initData) return { success: false, error: 'Not ready' };
+    if (!initData && !webSessionToken) return { success: false, error: 'Not ready' };
     try {
-      const data = await callGameApi('create-clan', initData, { name });
+      const data = await callGameApi('create-clan', initData || '', { name }, webSessionToken);
       if (data.success) {
         setGameState(prev => ({ ...prev, clanId: data.clan.id, energy: data.energy }));
         setClan(data.clan);
@@ -459,12 +467,12 @@ export const useGameState = () => {
     } catch (e: unknown) {
       return { success: false, error: e instanceof Error ? e.message : 'Error' };
     }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   const joinClan = useCallback(async (clanId: string) => {
-    if (!initData) return { success: false, error: 'Not ready' };
+    if (!initData && !webSessionToken) return { success: false, error: 'Not ready' };
     try {
-      const data = await callGameApi('join-clan', initData, { clanId });
+      const data = await callGameApi('join-clan', initData || '', { clanId }, webSessionToken);
       if (data.success) {
         setGameState(prev => ({ ...prev, clanId }));
         return { success: true };
@@ -473,12 +481,12 @@ export const useGameState = () => {
     } catch (e: unknown) {
       return { success: false, error: e instanceof Error ? e.message : 'Error' };
     }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   const leaveClan = useCallback(async () => {
-    if (!initData) return false;
+    if (!initData && !webSessionToken) return false;
     try {
-      const data = await callGameApi('leave-clan', initData);
+      const data = await callGameApi('leave-clan', initData || '', undefined, webSessionToken);
       if (data.success) {
         setGameState(prev => ({ ...prev, clanId: null }));
         setClan(null);
@@ -488,21 +496,21 @@ export const useGameState = () => {
     } catch {
       return false;
     }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   const fetchClanLeaderboard = useCallback(async () => {
-    if (!initData) return;
+    if (!initData && !webSessionToken) return;
     try {
-      const data = await callGameApi('clan-leaderboard', initData);
+      const data = await callGameApi('clan-leaderboard', initData || '', undefined, webSessionToken);
       setClanLeaderboard(data.clans || []);
     } catch { /* silent */ }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   // Verify mission (Telegram channel check)
   const verifyMission = useCallback(async (missionId: string, verifyType: string) => {
-    if (!initData) return null;
+    if (!initData && !webSessionToken) return null;
     try {
-      const data = await callGameApi('verify-mission', initData, { missionId, verifyType });
+      const data = await callGameApi('verify-mission', initData || '', { missionId, verifyType }, webSessionToken);
       return data as { verified: boolean; error?: string };
     } catch (e: unknown) {
       return { verified: false, error: e instanceof Error ? e.message : 'Error' };
@@ -523,18 +531,18 @@ export const useGameState = () => {
   }, []);
 
   const fetchAchievements = useCallback(async () => {
-    if (!initData) return;
+    if (!initData && !webSessionToken) return;
     try {
-      const data = await callGameApi('get-achievements', initData);
+      const data = await callGameApi('get-achievements', initData || '', undefined, webSessionToken);
       setAchievements(data.achievements || []);
       setAchievementCounts({ unlocked: data.unlockedCount || 0, total: data.totalCount || 13 });
     } catch { /* silent */ }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   const claimAchievement = useCallback(async (achievementId: string) => {
-    if (!initData) return false;
+    if (!initData && !webSessionToken) return false;
     try {
-      const data = await callGameApi('claim-achievement', initData, { achievementId });
+      const data = await callGameApi('claim-achievement', initData || '', { achievementId }, webSessionToken);
       if (data.success) {
         setGameState(prev => ({ ...prev, energy: data.energy }));
         setAchievements(prev => prev.map(a => a.id === achievementId ? { ...a, claimed: true } : a));
@@ -550,20 +558,20 @@ export const useGameState = () => {
 
   // Fetch wheel status on init
   useEffect(() => {
-    if (!initData || !gameState.profileId) return;
+    if ((!initData && !webSessionToken) || !gameState.profileId) return;
     const checkWheelStatus = async () => {
       try {
-        const data = await callGameApi('get-wheel-status', initData);
+        const data = await callGameApi('get-wheel-status', initData || '', undefined, webSessionToken);
         setCanSpinFree(data.canSpinFree);
       } catch { /* silent */ }
     };
     checkWheelStatus();
-  }, [initData, gameState.profileId]);
+  }, [initData, webSessionToken, gameState.profileId]);
 
   const spinWheel = useCallback(async () => {
-    if (!initData) return { prize: null, canSpinFree: false, error: 'Not ready' };
+    if (!initData && !webSessionToken) return { prize: null, canSpinFree: false, error: 'Not ready' };
     try {
-      const data = await callGameApi('spin-wheel', initData);
+      const data = await callGameApi('spin-wheel', initData || '', undefined, webSessionToken);
       if (data.success) {
         setGameState(prev => ({ ...prev, energy: data.newEnergy }));
         setCanSpinFree(data.canSpinFree);
@@ -573,13 +581,13 @@ export const useGameState = () => {
     } catch (e: unknown) {
       return { prize: null, canSpinFree: false, error: e instanceof Error ? e.message : 'Error' };
     }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   // Apply energy pack (after TON payment)
   const applyEnergyPack = useCallback(async (packId: string) => {
-    if (!initData) return false;
+    if (!initData && !webSessionToken) return false;
     try {
-      const data = await callGameApi('apply-energy-pack', initData, { packId });
+      const data = await callGameApi('apply-energy-pack', initData || '', { packId }, webSessionToken);
       if (data.success) {
         setGameState(prev => ({
           ...prev,
@@ -592,17 +600,17 @@ export const useGameState = () => {
     } catch {
       return false;
     }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   // Friends list
 
   const fetchFriends = useCallback(async () => {
-    if (!initData) return;
+    if (!initData && !webSessionToken) return;
     try {
-      const data = await callGameApi('get-friends', initData);
+      const data = await callGameApi('get-friends', initData || '', undefined, webSessionToken);
       setFriends(data.friends || []);
     } catch { /* silent */ }
-  }, [initData]);
+  }, [initData, webSessionToken]);
 
   return {
     gameState,
