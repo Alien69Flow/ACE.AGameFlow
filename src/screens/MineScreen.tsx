@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft, Zap, Star, Clock } from 'lucide-react';
+import { useState } from 'react';
 import { Toroid } from '@/components/game/Toroid';
 import { getTutorialHighlight } from '@/components/game/Tutorial';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
@@ -14,18 +15,21 @@ interface MineScreenProps {
   multiplier: number;
   multiplierExpiresAt: string | null;
   onActivateMultiplier: () => Promise<boolean>;
-  onApplyEnergyPack?: (packId: string) => Promise<boolean>;
+  onApplyEnergyPack?: (packId: string, txHash: string) => Promise<boolean>;
 }
 
 export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, multiplierExpiresAt, onActivateMultiplier, onApplyEnergyPack }: MineScreenProps) => {
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [tonConnectUI] = useTonConnectUI();
+  const [processingPackId, setProcessingPackId] = useState<string | null>(null);
 
   const isMultiplierActive = multiplier > 1 && multiplierExpiresAt && new Date(multiplierExpiresAt) > new Date();
 
   const handleBuyPack = async (packId: string, priceTon: string) => {
+    if (processingPackId) return;
+    setProcessingPackId(packId);
     try {
-      await tonConnectUI.sendTransaction({
+      const result = await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
           {
@@ -34,19 +38,26 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
           },
         ],
       });
-      if (onApplyEnergyPack) {
-        const ok = await onApplyEnergyPack(packId);
+
+      const txHash = result?.boc || result?.id || '';
+
+      if (onApplyEnergyPack && txHash) {
+        const ok = await onApplyEnergyPack(packId, txHash);
         if (ok) {
-          toast.success('⚡ ¡Energía inyectada con éxito!');
+          toast.success('¡Energía inyectada con éxito! Transacción verificada.');
         } else {
-          toast.error('❌ Pago enviado pero no se pudo aplicar. Contacta soporte.');
+          toast.error('Pago enviado pero la verificación falló. Contacta soporte con el hash de tu transacción.');
         }
+      } else if (!txHash) {
+        toast.error('No se pudo obtener el hash de la transacción. Contacta soporte.');
       } else {
-        toast.success('⚡ ¡Transacción enviada!');
+        toast.success('Transacción enviada.');
       }
     } catch (e) {
       console.error('Transaction failed:', e);
-      toast.error('❌ Transacción cancelada o fallida');
+      toast.error('Transacción cancelada o fallida');
+    } finally {
+      setProcessingPackId(null);
     }
   };
 
@@ -156,11 +167,12 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
             <motion.button
               key={pack.id}
               onClick={() => handleBuyPack(pack.id, pack.priceTon)}
+              disabled={processingPackId !== null}
               className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all duration-200
-                ${pack.featured 
-                  ? 'border-secondary/60 bg-secondary/5 hover:bg-secondary/10 relative' 
+                ${pack.featured
+                  ? 'border-secondary/60 bg-secondary/5 hover:bg-secondary/10 relative'
                   : 'border-secondary/30 bg-card/80 hover:border-secondary/60 hover:bg-secondary/5'
-                }`}
+                } ${processingPackId === pack.id ? 'opacity-50' : ''}`}
               whileTap={{ scale: 0.95 }}
             >
               {pack.featured && (
@@ -176,7 +188,7 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
                 +{pack.staminaGain.toLocaleString()}
               </span>
               <span className="font-display text-xs font-bold text-foreground">
-                {pack.priceTon} TON
+                {processingPackId === pack.id ? '...' : `${pack.priceTon} TON`}
               </span>
             </motion.button>
           ))}

@@ -1,9 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.93.3";
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-telegram-init-data',
-};
+const ALLOWED_ORIGINS = [
+  'https://ljasfllzyeoxvfozzple.supabase.co',
+  'https://telegram.org',
+  'https://web.telegram.org',
+];
+
+function getCorsHeaders(origin: string | null) {
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-telegram-init-data',
+  };
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Vary'] = 'Origin';
+  }
+  return headers;
+}
 
 // Validate Telegram WebApp initData
 async function validateTelegramInitData(initData: string, botToken: string): Promise<{ valid: boolean; user?: { id: number; username?: string; first_name?: string }; startParam?: string }> {
@@ -198,7 +211,19 @@ const MINIGAME_CATALOG: Record<string, { rewardPerPoint: number; maxReward: numb
   asteroid_blitz: { rewardPerPoint: 1,  maxReward: 150, dailyPlayLimit: 5 },
 };
 
+// Energy pack catalog (must match frontend)
+const DAO_WALLET_ADDRESS = "UQDpx7rfaaO-P6-Lnu0IrR1kWEo2Geo1VMx1UYy0IyyCJJ20";
+const ENERGY_PACK_CATALOG: Record<string, { staminaGain: number; priceTon: string }> = {
+  flux_starter:   { staminaGain: 1000,   priceTon: "0.1" },
+  tesla_burst:    { staminaGain: 5000,   priceTon: "0.4" },
+  void_core:      { staminaGain: 20000,  priceTon: "1.2" },
+  quantum_surge:  { staminaGain: 50000,  priceTon: "3.0" },
+  singularity:    { staminaGain: 100000, priceTon: "5.0" },
+};
+
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get('origin'));
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -1075,7 +1100,7 @@ Deno.serve(async (req) => {
 
         const { data: clan, error: clanError } = await supabase
           .from('clans')
-          .insert({ name, created_by: profile.id, total_energy: profile.energy - 500 })
+          .insert({ name, created_by: profile.id, total_energy: 0 })
           .select()
           .single();
 
@@ -1697,16 +1722,16 @@ Deno.serve(async (req) => {
           .eq('game_id', gameId)
           .maybeSingle();
         
-        const now = new Date().toISOString();
-        const playsToday = existingScore?.last_played_at ? 1 : 0; // simplified daily limit
+        const now = new Date();
         
-        if (existingScore && playsToday >= catalog.dailyPlayLimit) {
-          // Check if last play was today
+        // Daily play limit: check if last play was today and count plays today
+        if (existingScore) {
           const lastPlay = new Date(existingScore.last_played_at);
-          const today = new Date();
-          if (lastPlay.toDateString() === today.toDateString() && existingScore.total_plays >= catalog.dailyPlayLimit) {
+          const isSameDay = lastPlay.toDateString() === now.toDateString();
+          
+          if (isSameDay && existingScore.total_plays >= catalog.dailyPlayLimit) {
             return new Response(
-              JSON.stringify({ error: 'Daily play limit reached for this game' }),
+              JSON.stringify({ error: `Daily play limit reached (${catalog.dailyPlayLimit} plays/day)`, playsToday: existingScore.total_plays }),
               { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
@@ -1716,7 +1741,10 @@ Deno.serve(async (req) => {
         const reward = Math.min(Math.floor(score * catalog.rewardPerPoint), catalog.maxReward);
         const isHighScore = !existingScore || score > existingScore.high_score;
         const newHighScore = isHighScore ? score : existingScore!.high_score;
-        const newTotalPlays = (existingScore?.total_plays || 0) + 1;
+        
+        // Reset play count at start of new day, increment otherwise
+        const isSameDayAsLast = existingScore && new Date(existingScore.last_played_at).toDateString() === now.toDateString();
+        const newTotalPlays = isSameDayAsLast ? (existingScore!.total_plays || 0) + 1 : 1;
         const newEnergy = profile.energy + reward;
         
         if (existingScore) {
@@ -1725,7 +1753,7 @@ Deno.serve(async (req) => {
             .update({
               high_score: newHighScore,
               total_plays: newTotalPlays,
-              last_played_at: now,
+              last_played_at: now.toISOString(),
             })
             .eq('id', existingScore.id);
         } else {
@@ -1736,7 +1764,7 @@ Deno.serve(async (req) => {
               game_id: gameId,
               high_score: newHighScore,
               total_plays: newTotalPlays,
-              last_played_at: now,
+              last_played_at: now.toISOString(),
             });
         }
         
@@ -1785,22 +1813,196 @@ Deno.serve(async (req) => {
         );
       }
 
-      case 'apply-energy-pack': {
-        // Disabled until on-chain TON payment verification is implemented.
-        // Granting stamina without verifying a paid transaction would allow
-        // any authenticated user to claim unlimited free packs.
-        return new Response(
-          JSON.stringify({
-            error: 'Energy packs are temporarily disabled. Payment verification is not yet configured.',
-          }),
-          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
+      case 'verify-payment': {
+        const body = await req.json();
+        const { txHash, expectedAmount, expectedAddress } = body;
+
+        if (!txHash || !expectedAmount) {
+          return new Response(
+            JSON.stringify({ error: 'Missing transaction hash or amount' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        try {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('id, energy, stamina')
+            .eq('telegram_id', telegramUserId)
+            .single();
+
+          if (!profile) {
+            return new Response(
+              JSON.stringify({ error: 'Profile not found' }),
+              { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Check if this tx was already claimed
+          const { data: existingClaim } = await supabase
+            .from('energy_pack_purchases')
+            .select('id')
+            .eq('tx_hash', txHash)
+            .eq('profile_id', profile.id)
+            .maybeSingle();
+
+          if (existingClaim) {
+            return new Response(
+              JSON.stringify({ error: 'Transaction already claimed' }),
+              { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Verify transaction on TON blockchain via public API
+          const tonApiUrl = `https://tonapi.io/v2/blockchain/transactions/${txHash}`;
+          const tonResponse = await fetch(tonApiUrl, {
+            headers: { 'Accept': 'application/json' },
+          });
+
+          if (!tonResponse.ok) {
+            return new Response(
+              JSON.stringify({ error: 'Transaction not found on blockchain', verified: false }),
+              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          const txData = await tonResponse.json();
+
+          // Verify the transaction message
+          const messages = txData?.out_messages || [];
+          const validMessage = messages.find((msg: any) => {
+            if (!msg) return false;
+            const msgAmount = parseInt(msg.value || '0', 10);
+            const expectedNano = Math.floor(parseFloat(expectedAmount) * 1e9);
+            const msgAddr = msg.destination?.address || msg.recipient?.address;
+            return msgAmount >= expectedNano && expectedAddress &&
+                   (msgAddr === expectedAddress ||
+                    msgAddr === DAO_WALLET_ADDRESS ||
+                    expectedAddress === DAO_WALLET_ADDRESS);
+          });
+
+          if (!validMessage) {
+            return new Response(
+              JSON.stringify({ error: 'Transaction does not match expected payment', verified: false }),
+              { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Transaction verified — record it and return success
+          // The actual energy/stamina grant is handled by apply-energy-pack
+          return new Response(
+            JSON.stringify({ verified: true, txHash }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        } catch (verifyError) {
+          console.error('Payment verification error:', verifyError instanceof Error ? verifyError.message : 'Unknown');
+          return new Response(
+            JSON.stringify({ error: 'Verification service unavailable', verified: false }),
+            { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
-      case 'verify-payment': {
+      case 'apply-energy-pack': {
+        const body = await req.json();
+        const { packId, txHash } = body;
+
+        if (!packId || !txHash) {
+          return new Response(
+            JSON.stringify({ error: 'Missing pack ID or transaction hash' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const pack = ENERGY_PACK_CATALOG[packId];
+        if (!pack) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid pack ID' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy, stamina, max_stamina')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if this tx was already claimed
+        const { data: existingClaim } = await supabase
+          .from('energy_pack_purchases')
+          .select('id')
+          .eq('tx_hash', txHash)
+          .maybeSingle();
+
+        if (existingClaim) {
+          return new Response(
+            JSON.stringify({ error: 'Transaction already claimed' }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Verify transaction on TON blockchain
+        const tonApiUrl = `https://tonapi.io/v2/blockchain/transactions/${txHash}`;
+        const tonResponse = await fetch(tonApiUrl, {
+          headers: { 'Accept': 'application/json' },
+        });
+
+        if (!tonResponse.ok) {
+          return new Response(
+            JSON.stringify({ error: 'Transaction not found on blockchain' }),
+            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const txData = await tonResponse.json();
+        const messages = txData?.out_messages || [];
+        const expectedNano = Math.floor(parseFloat(pack.priceTon) * 1e9);
+        const validMessage = messages.find((msg: any) => {
+          if (!msg) return false;
+          const msgAmount = parseInt(msg.value || '0', 10);
+          const msgAddr = msg.destination?.address || msg.recipient?.address;
+          return msgAmount >= expectedNano && msgAddr === DAO_WALLET_ADDRESS;
+        });
+
+        if (!validMessage) {
+          return new Response(
+            JSON.stringify({ error: 'Transaction does not match expected payment' }),
+            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Transaction verified — grant stamina
+        const newStamina = Math.min(profile.stamina + pack.staminaGain, profile.max_stamina || 999999);
+
+        await supabase
+          .from('energy_pack_purchases')
+          .insert({
+            profile_id: profile.id,
+            pack_id: packId,
+            tx_hash: txHash,
+            stamina_granted: pack.staminaGain,
+          });
+
+        await supabase
+          .from('profiles')
+          .update({ stamina: newStamina, last_stamina_update: new Date().toISOString() })
+          .eq('id', profile.id);
+
         return new Response(
-          JSON.stringify({ error: 'Payment verification not yet configured' }),
-          { status: 501, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: true,
+            stamina: newStamina,
+            staminaGain: pack.staminaGain,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       

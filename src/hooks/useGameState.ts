@@ -584,10 +584,10 @@ export const useGameState = () => {
   }, [initData, webSessionToken]);
 
   // Apply energy pack (after TON payment)
-  const applyEnergyPack = useCallback(async (packId: string) => {
+  const applyEnergyPack = useCallback(async (packId: string, txHash: string) => {
     if (!initData && !webSessionToken) return false;
     try {
-      const data = await callGameApi('apply-energy-pack', initData || '', { packId }, webSessionToken);
+      const data = await callGameApi('apply-energy-pack', initData || '', { packId, txHash }, webSessionToken);
       if (data.success) {
         setGameState(prev => ({
           ...prev,
@@ -596,6 +596,7 @@ export const useGameState = () => {
         toast.success(`+${data.staminaGain.toLocaleString()} stamina`);
         return true;
       }
+      toast.error(data.error || 'No se pudo aplicar el pack');
       return false;
     } catch {
       return false;
