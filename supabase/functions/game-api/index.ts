@@ -116,7 +116,7 @@ const ACHIEVEMENT_CATALOG = [
   { id: 'all_missions', name: 'Completista', description: 'Completa todas las misiones', icon: '✅', reward: 500 },
 ];
 
-const TOTAL_MISSIONS_COUNT = 6; // Number of missions in the game
+const TOTAL_MISSIONS_COUNT = 9; // Must match frontend MISSIONS array length
 
 // Server-side mission reward catalog (canonical source of truth)
 const MISSION_REWARDS: Record<string, number> = {
@@ -455,7 +455,7 @@ Deno.serve(async (req) => {
       case 'tap': {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, energy, stamina, multiplier, multiplier_expires_at, tap_power_level, last_tap_at')
+          .select('id, energy, stamina, multiplier, multiplier_expires_at, tap_power_level, last_tap_at, total_taps')
           .eq('telegram_id', telegramUserId)
           .single();
         
@@ -512,7 +512,8 @@ Deno.serve(async (req) => {
             energy: newEnergy, 
             stamina: newStamina, 
             last_stamina_update: new Date().toISOString(),
-            last_tap_at: new Date().toISOString()
+            last_tap_at: new Date().toISOString(),
+            total_taps: (profile.total_taps || 0) + 1
           })
           .eq('id', profile.id)
           .eq('stamina', profile.stamina)
@@ -536,9 +537,10 @@ Deno.serve(async (req) => {
           );
         }
         
-        // Check achievements every 10th tap to reduce DB load
+        // Check achievements every 5 taps to reduce DB load
         let newAchievements: Awaited<ReturnType<typeof checkAchievements>> = [];
-        if (updatedProfile[0].energy % 10 === 0) {
+        const tapCount = (profile.total_taps || 0) + 1;
+        if (tapCount % 5 === 0) {
           newAchievements = await checkAchievements(supabase, profile.id);
         }
 
@@ -1491,12 +1493,15 @@ Deno.serve(async (req) => {
 
         await supabase.from('profiles').update(updates).eq('id', profile.id);
 
+        const spinAchievements = await checkAchievements(supabase, profile.id);
+
         return new Response(
           JSON.stringify({
             success: true,
             prize: selectedPrize,
             canSpinFree: false,
             newEnergy: selectedPrize.type === 'energy' ? profile.energy + selectedPrize.value : profile.energy,
+            newAchievements: spinAchievements,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

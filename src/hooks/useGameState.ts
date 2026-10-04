@@ -276,7 +276,11 @@ export const useGameState = () => {
         energy: data.energy,
         stamina: data.stamina,
       }));
-      
+
+      if (data.newAchievements) {
+        processNewAchievements(data.newAchievements);
+      }
+
       return true;
     } catch {
       setGameState(prev => ({
@@ -422,7 +426,7 @@ export const useGameState = () => {
         setGameState(prev => ({
           ...prev,
           energy: data.energy,
-          [`${data.upgradeType}Level`]: data.newLevel, // won't actually set due to camelCase mismatch, but energy updates
+          [`_unused_${data.upgradeType}`]: data.newLevel,
         }));
         // Refresh specific level
         const levelMap: Record<string, keyof GameState> = {
@@ -437,6 +441,9 @@ export const useGameState = () => {
         }
         if (data.upgradeType === 'max_stamina') {
           setGameState(prev => ({ ...prev, maxStamina: data.newValue }));
+        }
+        if (data.newAchievements) {
+          processNewAchievements(data.newAchievements);
         }
         return data;
       }
@@ -575,6 +582,9 @@ export const useGameState = () => {
       if (data.success) {
         setGameState(prev => ({ ...prev, energy: data.newEnergy }));
         setCanSpinFree(data.canSpinFree);
+        if (data.newAchievements) {
+          processNewAchievements(data.newAchievements);
+        }
         return { prize: data.prize, canSpinFree: data.canSpinFree };
       }
       return { prize: null, canSpinFree: data.canSpinFree ?? false, error: data.error };
@@ -626,6 +636,16 @@ export const useGameState = () => {
     }
   }, [initData, webSessionToken]);
 
+  const [minigameScores, setMinigameScores] = useState<{ game_id: string; high_score: number; total_plays: number; last_played_at: string }[]>([]);
+
+  const fetchMinigameScores = useCallback(async () => {
+    if (!initData && !webSessionToken) return;
+    try {
+      const data = await callGameApi('get-minigame-scores', initData || '', undefined, webSessionToken);
+      setMinigameScores(data.scores || []);
+    } catch { /* silent */ }
+  }, [initData, webSessionToken]);
+
   return {
     gameState,
     missions,
@@ -666,5 +686,7 @@ export const useGameState = () => {
     processNewAchievements,
     applyEnergyPack,
     submitMinigameScore,
+    minigameScores,
+    fetchMinigameScores,
   };
 };

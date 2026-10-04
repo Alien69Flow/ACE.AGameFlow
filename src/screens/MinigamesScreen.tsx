@@ -5,6 +5,8 @@ import { useTelegram } from '@/hooks/useTelegram';
 
 interface MinigamesScreenProps {
   onSubmitScore: (gameId: string, score: number) => Promise<{ success: boolean; reward: number; energy: number; isHighScore: boolean } | null>;
+  minigameScores: { game_id: string; high_score: number; total_plays: number; last_played_at: string }[];
+  onFetchScores: () => Promise<void>;
 }
 
 type GameState = 'hub' | 'memory_match' | 'reaction_rush' | 'asteroid_blitz';
@@ -15,19 +17,27 @@ const GAME_INFO: Record<string, { icon: typeof Brain; label: string; description
   asteroid_blitz: { icon: Rocket,    label: 'Asteroid Blitz', description: 'Destruye asteroides antes de que escapen',   color: 'text-primary' },
 };
 
-export const MinigamesScreen = ({ onSubmitScore }: MinigamesScreenProps) => {
+export const MinigamesScreen = ({ onSubmitScore, minigameScores, onFetchScores }: MinigamesScreenProps) => {
   const { hapticFeedback } = useTelegram();
   const [gameState, setGameState] = useState<GameState>('hub');
   const [lastReward, setLastReward] = useState<number | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    onFetchScores();
+  }, [onFetchScores]);
 
   const handleSubmitScore = useCallback(async (gameId: string, score: number) => {
+    setSubmitting(true);
     const result = await onSubmitScore(gameId, score);
+    setSubmitting(false);
     if (result?.success) {
       hapticFeedback('medium');
       setLastReward(result.reward);
     }
     setGameState('hub');
-  }, [onSubmitScore, hapticFeedback]);
+    onFetchScores();
+  }, [onSubmitScore, hapticFeedback, onFetchScores]);
 
   if (gameState === 'hub') {
     return (
@@ -57,6 +67,7 @@ export const MinigamesScreen = ({ onSubmitScore }: MinigamesScreenProps) => {
           <div className="space-y-3">
             {Object.entries(GAME_INFO).map(([id, info], index) => {
               const Icon = info.icon;
+              const scoreEntry = minigameScores.find(s => s.game_id === id);
               return (
                 <motion.button
                   key={id}
@@ -73,12 +84,28 @@ export const MinigamesScreen = ({ onSubmitScore }: MinigamesScreenProps) => {
                   <div className="flex-1 text-left">
                     <h3 className="font-display text-sm font-bold text-foreground">{info.label}</h3>
                     <p className="font-body text-xs text-muted-foreground">{info.description}</p>
+                    {scoreEntry && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="font-display text-[10px] text-secondary flex items-center gap-1">
+                          <Trophy className="w-3 h-3" /> Récord: {scoreEntry.high_score}
+                        </span>
+                        <span className="font-body text-[10px] text-muted-foreground">
+                          {scoreEntry.total_plays} jugadas
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <Trophy className="w-4 h-4 text-muted-foreground/40" />
                 </motion.button>
               );
             })}
           </div>
+          {submitting && (
+            <div className="flex items-center justify-center py-4">
+              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span className="ml-2 font-display text-xs text-primary">Guardando...</span>
+            </div>
+          )}
         </div>
       </motion.div>
     );

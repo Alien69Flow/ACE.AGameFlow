@@ -54,7 +54,7 @@ const MISSIONS = [
   // Auto-verified missions (double reward)
   { id: 'tg_channel', name: 'Unirse al Canal', url: 'https://t.me/AlienFlow', icon: '✈️', reward: 100, verifiable: true, verifyType: 'telegram_channel' as const },
   { id: 'tg_group', name: 'Unirse al Grupo', url: 'https://t.me/AlienFlowChat', icon: '💬', reward: 100, verifiable: true, verifyType: 'telegram_channel' as const },
-  { id: 'x_follow', name: 'Seguir en X', url: 'https://x.com/alien69flow', icon: '🐦', reward: 100, verifiable: true, verifyType: 'x_follow' as const },
+  { id: 'x_follow', name: 'Seguir en X', url: 'https://x.com/alien69flow', icon: '🐦', reward: 100, verifiable: false, verifyType: null },
   // Standard missions
   { id: 'facebook', name: 'Facebook', url: 'https://www.facebook.com/Alien69Flow', icon: '📘', reward: 50, verifiable: false, verifyType: null },
   { id: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/alien69flow/', icon: '📸', reward: 50, verifiable: false, verifyType: null },
@@ -107,6 +107,8 @@ const Index = () => {
     dismissAchievementNotification,
     applyEnergyPack,
     submitMinigameScore,
+    minigameScores,
+    fetchMinigameScores,
   } = useGameState();
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
@@ -230,6 +232,17 @@ const Index = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground overflow-hidden">
+      {/* Web logout button */}
+      {!isTelegram && webSessionToken && (
+        <button
+          onClick={() => { signOutWeb(); }}
+          className="fixed top-2 right-2 z-[65] flex items-center gap-1 px-2 py-1 rounded-lg bg-card/80 border border-muted/30 text-muted-foreground hover:text-foreground hover:border-muted/60 transition-colors"
+        >
+          <LogOut className="w-3 h-3" />
+          <span className="font-display text-[10px]">Salir</span>
+        </button>
+      )}
+
       {/* Stamina Bar */}
       <StaminaBar 
         stamina={gameState.stamina} 
@@ -371,6 +384,8 @@ const Index = () => {
           <MinigamesScreen
             key="minigames"
             onSubmitScore={submitMinigameScore}
+            minigameScores={minigameScores}
+            onFetchScores={fetchMinigameScores}
           />
         )}
       </AnimatePresence>
