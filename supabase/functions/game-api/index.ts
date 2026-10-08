@@ -1780,7 +1780,9 @@ Deno.serve(async (req) => {
             .update({ energy: newEnergy })
             .eq('id', profile.id);
         }
-        
+
+        const minigameAchievements = await checkAchievements(supabase, profile.id);
+
         return new Response(
           JSON.stringify({
             success: true,
@@ -1788,6 +1790,7 @@ Deno.serve(async (req) => {
             energy: newEnergy,
             isHighScore,
             highScore: newHighScore,
+            newAchievements: minigameAchievements,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

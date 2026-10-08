@@ -318,6 +318,9 @@ export const useGameState = () => {
         setMissions(prev => prev.map(m => 
           m.id === missionId ? { ...m, completedAt: new Date(), claimed: true } : m
         ));
+        if (data.newAchievements) {
+          processNewAchievements(data.newAchievements);
+        }
         return true;
       }
       toast.error('❌ No se pudo reclamar la misión');
@@ -347,6 +350,9 @@ export const useGameState = () => {
           energy: prev.energy + data.energyGained,
           hasReferred: true,
         }));
+        if (data.newAchievements) {
+          processNewAchievements(data.newAchievements);
+        }
         return { success: true };
       }
       return { success: false, error: 'Failed' };
@@ -368,6 +374,9 @@ export const useGameState = () => {
           lastDailyClaim: new Date().toISOString(),
         }));
         setDailyRewardAvailable(false);
+        if (data.newAchievements) {
+          processNewAchievements(data.newAchievements);
+        }
         return { reward: data.reward, streak: data.streak };
       }
       return null;
@@ -629,6 +638,9 @@ export const useGameState = () => {
       const data = await callGameApi('submit-minigame-score', initData || '', { gameId, score }, webSessionToken);
       if (data.success) {
         setGameState(prev => ({ ...prev, energy: data.energy }));
+        if (data.newAchievements) {
+          processNewAchievements(data.newAchievements);
+        }
       }
       return data;
     } catch {
