@@ -4,6 +4,7 @@ import {
   Send, Globe, MessageCircle, Rocket, BookOpen, FileText,
   Instagram, Facebook, Linkedin, Music, AtSign, Github, MessageSquare, Globe2
 } from 'lucide-react';
+import { OFFICIAL_LINKS } from '@/lib/ecosystem';
 
 const RINGS = [
   { size: 640, opacity: 0.06, delay: 0 },
@@ -31,20 +32,20 @@ const STATS = [
 
 const SOCIAL_LINKS = [
   { name: 'Discord', icon: MessageCircle, url: '#', soon: true },
-  { name: 'DoraHacks', icon: Rocket, url: 'https://dorahacks.io/org/alien69flow' },
-  { name: 'Facebook', icon: Facebook, url: 'https://facebook.com/Alien69Flow' },
-  { name: 'Farcaster', icon: AtSign, url: 'https://warpcast.com/alien69flow' },
-  { name: 'GitHub', icon: Github, url: 'https://github.com/Alien69Flow' },
-  { name: 'GitBook', icon: BookOpen, url: 'https://alienflowspace.gitbook.io/dao/' },
-  { name: 'HackMD', icon: FileText, url: 'https://hackmd.io/@Alien69Flow' },
-  { name: 'Instagram', icon: Instagram, url: 'https://instagram.com/alien69flow' },
-  { name: 'LinkedIn', icon: Linkedin, url: 'https://linkedin.com/company/alienflow' },
-  { name: 'Reddit', icon: MessageSquare, url: 'https://reddit.com/u/Alien69Flow' },
-  { name: 'Telegram', icon: Send, url: 'https://t.me/AlienFlow' },
-  { name: 'Threads', icon: AtSign, url: 'https://threads.net/@alien69flow' },
-  { name: 'TikTok', icon: Music, url: 'https://tiktok.com/@Alien69Flow' },
-  { name: 'Website', icon: Globe, url: 'https://alienflow.space' },
-  { name: 'X', icon: () => <span className="font-bold text-xs">𝕏</span>, url: 'https://x.com/alien69flow' },
+  { name: 'DoraHacks', icon: Rocket, url: OFFICIAL_LINKS.dorahacks },
+  { name: 'Facebook', icon: Facebook, url: OFFICIAL_LINKS.facebook },
+  { name: 'Farcaster', icon: AtSign, url: OFFICIAL_LINKS.farcaster },
+  { name: 'GitHub', icon: Github, url: OFFICIAL_LINKS.github },
+  { name: 'GitBook', icon: BookOpen, url: OFFICIAL_LINKS.gitbook },
+  { name: 'HackMD', icon: FileText, url: OFFICIAL_LINKS.hackmd },
+  { name: 'Instagram', icon: Instagram, url: OFFICIAL_LINKS.instagram },
+  { name: 'LinkedIn', icon: Linkedin, url: OFFICIAL_LINKS.linkedin },
+  { name: 'Reddit', icon: MessageSquare, url: OFFICIAL_LINKS.reddit },
+  { name: 'Telegram', icon: Send, url: OFFICIAL_LINKS.telegramChannel },
+  { name: 'Threads', icon: AtSign, url: OFFICIAL_LINKS.threads },
+  { name: 'TikTok', icon: Music, url: OFFICIAL_LINKS.tiktok },
+  { name: 'Website', icon: Globe, url: OFFICIAL_LINKS.dao },
+  { name: 'X', icon: () => <span className="font-bold text-xs">𝕏</span>, url: OFFICIAL_LINKS.x },
 ];
 
 const SUBTITLE_TEXT = 'ZERO-POINT ENERGY MINING · NEUTRINO PROTOCOL';

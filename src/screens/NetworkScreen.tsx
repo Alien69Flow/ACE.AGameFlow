@@ -4,6 +4,7 @@ import { Copy, Send, Users, Trophy, Crown, Medal, Award, Zap, Shield, LogOut, Pl
 import { MissionCard } from '@/components/game/MissionCard';
 import { EcosystemLink } from '@/components/game/EcosystemLink';
 import { Input } from '@/components/ui/input';
+import { OFFICIAL_LINKS } from '@/lib/ecosystem';
 
 interface Mission {
   id: string;
@@ -78,21 +79,21 @@ interface NetworkScreenProps {
 }
 
 const ecosystemLinks = [
-  { name: 'ACE FLOW DAO (DApp)', icon: '🛸', url: 'https://alienflow.space' },
+  { name: 'ACE FLOW DAO (DApp)', icon: '🛸', url: OFFICIAL_LINKS.dao },
   { name: 'Discord', icon: '💬', comingSoon: true },
-  { name: 'Email', icon: '📧', url: 'mailto:alien69flow@proton.me' },
-  { name: 'GitBook', icon: '📚', url: 'https://alienflowspace.gitbook.io/dao/' },
-  { name: 'GitHub', icon: '💻', url: 'https://github.com/Alien69Flow' },
-  { name: 'LinkedIn Personal', icon: '👤', url: 'https://linkedin.com/in/alien69flow' },
-  { name: 'Reddit', icon: '🔴', url: 'https://reddit.com/user/Alien69Flow' },
-  { name: 'Threads', icon: '🧵', url: 'https://threads.net/@alien69flow' },
-  { name: 'TikTok', icon: '🎵', url: 'https://tiktok.com/@Alien69Flow' },
+  { name: 'Email', icon: '📧', url: OFFICIAL_LINKS.email },
+  { name: 'GitBook', icon: '📚', url: OFFICIAL_LINKS.gitbook },
+  { name: 'GitHub', icon: '💻', url: OFFICIAL_LINKS.github },
+  { name: 'LinkedIn', icon: '💼', url: OFFICIAL_LINKS.linkedin },
+  { name: 'Reddit', icon: '🔴', url: OFFICIAL_LINKS.reddit },
+  { name: 'Threads', icon: '🧵', url: OFFICIAL_LINKS.threads },
+  { name: 'TikTok', icon: '🎵', url: OFFICIAL_LINKS.tiktok },
 ];
 
 const daoEcosystemLinks = [
-  { name: 'Aitor.AlienFlow.Space', description: 'Sub-proyecto DAO', icon: '🌐', url: 'https://aitor.alienflow.space' },
-  { name: 'ADEX.AlienFlow.Space', description: 'Plataforma de intercambio', icon: '📊', url: 'https://adex.alienflow.space' },
-  { name: 'ATrip.AlienFlow.Space', description: 'Experiencias y viajes', icon: '🚀', url: 'https://atrip.alienflow.space' },
+  { name: 'Aitor.AlienFlow.Space', description: 'Sub-proyecto DAO', icon: '🌐', url: OFFICIAL_LINKS.aitor },
+  { name: 'ADEX.AlienFlow.Space', description: 'Plataforma de intercambio', icon: '📊', url: OFFICIAL_LINKS.adex },
+  { name: 'ATrip.AlienFlow.Space', description: 'Experiencias y viajes', icon: '🚀', url: OFFICIAL_LINKS.atrip },
 ];
 
 const legacyCollections = [

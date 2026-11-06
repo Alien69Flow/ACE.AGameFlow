@@ -10,7 +10,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <TonConnectUIProvider manifestUrl="https://agameflow.lovable.app/tonconnect-manifest.json">
+  <TonConnectUIProvider manifestUrl="https://ace.alienflow.space/tonconnect-manifest.json">
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />

@@ -39,7 +39,11 @@ export const MissionCard = ({
   const isAwaitingVerification = verifiable && !!startedAt && !claimed && !canClaim;
 
   const handleClick = () => {
-    if (claimed || !verifiable) return;
+    if (!verifiable) {
+      openLink(url);
+      return;
+    }
+    if (claimed) return;
 
     if (canClaim) {
       onClaim();
@@ -71,14 +75,19 @@ export const MissionCard = ({
         </>
       );
     }
-    if (!verifiable) {
-      return <span>Próximamente</span>;
-    }
     if (canClaim) {
       return (
         <>
           <Gift className="w-4 h-4" />
           <span>Reclamar +{reward}</span>
+        </>
+      );
+    }
+    if (!verifiable) {
+      return (
+        <>
+          <ExternalLink className="w-4 h-4" />
+          <span>Visitar</span>
         </>
       );
     }
@@ -124,25 +133,25 @@ export const MissionCard = ({
             </span>
           </h4>
           <p className="font-body text-xs text-secondary">
-            +{reward} Energía
+            +{reward} Energía{!verifiable && ' (próximamente)'}
           </p>
         </div>
 
         <motion.button
           onClick={handleClick}
-          disabled={claimed || !verifiable || isAwaitingVerification}
+          disabled={claimed || isAwaitingVerification}
           className={`
             flex items-center gap-2 px-4 py-2 rounded-lg font-display text-xs font-medium
             transition-colors
-            ${claimed || !verifiable
+            ${claimed
               ? 'bg-muted text-muted-foreground cursor-not-allowed'
               : canClaim
                 ? 'bg-secondary text-secondary-foreground hover:bg-secondary/90'
                 : 'bg-primary/10 text-primary hover:bg-primary/20'
             }
           `}
-          whileHover={!claimed && verifiable ? { scale: 1.02 } : {}}
-          whileTap={!claimed && verifiable ? { scale: 0.98 } : {}}
+          whileHover={!claimed ? { scale: 1.02 } : {}}
+          whileTap={!claimed ? { scale: 0.98 } : {}}
         >
           {getButtonContent()}
         </motion.button>

@@ -10,6 +10,7 @@ import { Tutorial } from '@/components/game/Tutorial';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { WebLoginScreen } from '@/components/game/WebLoginScreen';
 import { PlanetScreen } from '@/screens/PlanetScreen';
+import { OFFICIAL_LINKS } from '@/lib/ecosystem';
 import { MineScreen } from '@/screens/MineScreen';
 import { NetworkScreen } from '@/screens/NetworkScreen';
 import { UpgradesScreen } from '@/screens/UpgradesScreen';
@@ -55,18 +56,21 @@ type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop' | 'minigame
 const GUEST_LOCKED_SCREENS: Screen[] = ['network', 'upgrades', 'airdrop'];
 
 const MISSIONS = [
-  // Auto-verified missions (double reward)
-  { id: 'tg_channel', name: 'Unirse al Canal', url: 'https://t.me/AlienFlow', icon: '✈️', reward: 100, verifiable: true, verifyType: 'telegram_channel' as const },
-  { id: 'tg_group', name: 'Unirse al Grupo', url: 'https://t.me/AlienFlowChat', icon: '💬', reward: 100, verifiable: true, verifyType: 'telegram_channel' as const },
-  { id: 'x_follow', name: 'Seguir en X', url: 'https://x.com/alien69flow', icon: '🐦', reward: 100, verifiable: false, verifyType: null },
-  // Standard missions
-  { id: 'facebook', name: 'Facebook', url: 'https://www.facebook.com/Alien69Flow', icon: '📘', reward: 50, verifiable: false, verifyType: null },
-  { id: 'instagram', name: 'Instagram', url: 'https://www.instagram.com/alien69flow/', icon: '📸', reward: 50, verifiable: false, verifyType: null },
-  { id: 'linkedin', name: 'LinkedIn', url: 'https://linkedin.com/company/alienflowspace', icon: '💼', reward: 50, verifiable: false, verifyType: null },
+  // Verified missions (Telegram membership is checked by the server)
+  { id: 'tg_channel', name: 'Unirse al Canal', url: OFFICIAL_LINKS.telegramChannel, icon: '✈️', reward: 100, verifiable: true, verifyType: 'telegram_channel' as const },
+  { id: 'tg_group', name: 'Unirse al Grupo', url: OFFICIAL_LINKS.telegramGroup, icon: '💬', reward: 100, verifiable: true, verifyType: 'telegram_channel' as const },
+  // Social missions (rewards pending verification)
+  { id: 'x_follow', name: 'Seguir en X', url: OFFICIAL_LINKS.x, icon: '🐦', reward: 100, verifiable: false, verifyType: null },
+  { id: 'facebook', name: 'Facebook', url: OFFICIAL_LINKS.facebook, icon: '📘', reward: 50, verifiable: false, verifyType: null },
+  { id: 'instagram', name: 'Instagram', url: OFFICIAL_LINKS.instagram, icon: '📸', reward: 50, verifiable: false, verifyType: null },
+  { id: 'linkedin', name: 'LinkedIn', url: OFFICIAL_LINKS.linkedin, icon: '💼', reward: 50, verifiable: false, verifyType: null },
+  { id: 'reddit', name: 'Reddit', url: OFFICIAL_LINKS.reddit, icon: '🔴', reward: 50, verifiable: false, verifyType: null },
+  { id: 'tiktok', name: 'TikTok', url: OFFICIAL_LINKS.tiktok, icon: '🎵', reward: 50, verifiable: false, verifyType: null },
+  { id: 'threads', name: 'Threads', url: OFFICIAL_LINKS.threads, icon: '🧵', reward: 50, verifiable: false, verifyType: null },
   // DAO ecosystem missions
-  { id: 'aitor_visit', name: 'Visitar Aitor.AlienFlow', url: 'https://aitor.alienflow.space', icon: '🌐', reward: 50, verifiable: false, verifyType: null },
-  { id: 'adex_register', name: 'Registrarse en ADEX', url: 'https://adex.alienflow.space', icon: '📊', reward: 100, verifiable: false, verifyType: null },
-  { id: 'atrip_join', name: 'Unirse en ATrip', url: 'https://atrip.alienflow.space', icon: '🚀', reward: 100, verifiable: false, verifyType: null },
+  { id: 'aitor_visit', name: 'Visitar Aitor.AlienFlow', url: OFFICIAL_LINKS.aitor, icon: '🌐', reward: 50, verifiable: false, verifyType: null },
+  { id: 'adex_register', name: 'Registrarse en ADEX', url: OFFICIAL_LINKS.adex, icon: '📊', reward: 100, verifiable: false, verifyType: null },
+  { id: 'atrip_join', name: 'Unirse en ATrip', url: OFFICIAL_LINKS.atrip, icon: '🚀', reward: 100, verifiable: false, verifyType: null },
 ];
 
 const Index = () => {
