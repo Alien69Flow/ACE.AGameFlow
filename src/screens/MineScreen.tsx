@@ -14,7 +14,7 @@ interface MineScreenProps {
   tutorialStep: number | null;
   multiplier: number;
   multiplierExpiresAt: string | null;
-  onActivateMultiplier: () => Promise<boolean>;
+  onActivateMultiplier: (txHash: string) => Promise<boolean>;
   onApplyEnergyPack?: (packId: string, txHash: string) => Promise<boolean>;
 }
 
@@ -61,9 +61,11 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
     }
   };
 
-  const handleBuyMultiplier = async (priceTon: string) => {
+  const handleBuyMultiplier = async (packId: string, priceTon: string) => {
+    if (processingPackId) return;
+    setProcessingPackId(packId);
     try {
-      await tonConnectUI.sendTransaction({
+      const result = await tonConnectUI.sendTransaction({
         validUntil: Math.floor(Date.now() / 1000) + 600,
         messages: [
           {
@@ -72,15 +74,24 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
           },
         ],
       });
-      const ok = await onActivateMultiplier();
+
+      const txHash = result?.boc || result?.id || '';
+      if (!txHash) {
+        toast.error('No se pudo obtener el hash de la transacción. Contacta soporte.');
+        return;
+      }
+
+      const ok = await onActivateMultiplier(txHash);
       if (ok) {
         toast.success('🚀 ¡Boost activado! 2× durante 24h');
       } else {
-        toast.error('❌ Pago enviado pero no se pudo activar el boost.');
+        toast.error('❌ Pago enviado pero no se pudo activar el boost. Contacta soporte con el hash de tu transacción.');
       }
     } catch (e) {
       console.error('Transaction failed:', e);
       toast.error('❌ Transacción cancelada o fallida');
+    } finally {
+      setProcessingPackId(null);
     }
   };
 
@@ -204,8 +215,9 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
               {MULTIPLIER_PACKS.map((pack) => (
                 <motion.button
                   key={pack.id}
-                  onClick={() => handleBuyMultiplier(pack.priceTon)}
-                  className="flex items-center justify-between gap-3 p-3 rounded-xl border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-all duration-200"
+                  onClick={() => handleBuyMultiplier(pack.id, pack.priceTon)}
+                  disabled={processingPackId !== null}
+                  className={`flex items-center justify-between gap-3 p-3 rounded-xl border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-all duration-200 ${processingPackId === pack.id ? 'opacity-50' : ''}`}
                   whileTap={{ scale: 0.97 }}
                 >
                   <div className="flex items-center gap-2">

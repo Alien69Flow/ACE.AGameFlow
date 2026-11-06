@@ -131,9 +131,6 @@ const MISSION_REWARDS: Record<string, number> = {
   atrip_join: 100,
 };
 
-// Cost (in energy) for activating the 24h 2x multiplier
-const MULTIPLIER_ENERGY_COST = 5000;
-
 async function checkAchievements(supabase: ReturnType<typeof createClient>, profileId: string): Promise<{ id: string; name: string; icon: string; reward: number }[]> {
   // Get profile data
   const { data: profile } = await supabase
@@ -220,6 +217,26 @@ const ENERGY_PACK_CATALOG: Record<string, { staminaGain: number; priceTon: strin
   quantum_surge:  { staminaGain: 50000,  priceTon: "3.0" },
   singularity:    { staminaGain: 100000, priceTon: "5.0" },
 };
+
+// Must match the 2x boost price in the frontend payments catalog
+const MULTIPLIER_PACK_CATALOG = { multiplier: 2, durationHours: 24, priceTon: "0.5" };
+
+async function transactionPaysDao(txHash: string, expectedNano: number): Promise<boolean> {
+  const tonResponse = await fetch(
+    `https://tonapi.io/v2/blockchain/transactions/${encodeURIComponent(txHash)}`,
+    { headers: { 'Accept': 'application/json' } }
+  );
+  if (!tonResponse.ok) return false;
+
+  const txData = await tonResponse.json();
+  const messages = txData?.out_messages || [];
+  return messages.some((msg: any) => {
+    if (!msg) return false;
+    const msgAmount = parseInt(msg.value || '0', 10);
+    const msgAddr = msg.destination?.address || msg.recipient?.address;
+    return msgAmount >= expectedNano && msgAddr === DAO_WALLET_ADDRESS;
+  });
+}
 
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req.headers.get('origin'));
@@ -886,9 +903,19 @@ Deno.serve(async (req) => {
       }
 
       case 'buy-multiplier': {
+        const body = await req.json();
+        const { txHash } = body;
+
+        if (!txHash || typeof txHash !== 'string') {
+          return new Response(
+            JSON.stringify({ error: 'Missing transaction hash' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, energy, multiplier, multiplier_expires_at')
+          .select('id, multiplier, multiplier_expires_at')
           .eq('telegram_id', telegramUserId)
           .single();
 
@@ -911,24 +938,56 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Charge energy cost server-side
-        if (profile.energy < MULTIPLIER_ENERGY_COST) {
+        const { data: existingClaim } = await supabase
+          .from('energy_pack_purchases')
+          .select('id')
+          .eq('tx_hash', txHash)
+          .maybeSingle();
+
+        if (existingClaim) {
           return new Response(
-            JSON.stringify({ error: 'Not enough energy', cost: MULTIPLIER_ENERGY_COST }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: 'Transaction already claimed' }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-        const newEnergy = profile.energy - MULTIPLIER_ENERGY_COST;
+        const paid = await transactionPaysDao(txHash, Math.floor(parseFloat(MULTIPLIER_PACK_CATALOG.priceTon) * 1e9));
+        if (!paid) {
+          return new Response(
+            JSON.stringify({ error: 'Transaction does not match expected payment' }),
+            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Unique tx_hash constraint makes the payment single-use even under concurrent requests
+        const { error: purchaseError } = await supabase
+          .from('energy_pack_purchases')
+          .insert({
+            profile_id: profile.id,
+            pack_id: 'boost_2x',
+            tx_hash: txHash,
+            stamina_granted: 0,
+          });
+
+        if (purchaseError) {
+          if (purchaseError.code === '23505') {
+            return new Response(
+              JSON.stringify({ error: 'Transaction already claimed' }),
+              { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          throw purchaseError;
+        }
+
+        const expiresAt = new Date(Date.now() + MULTIPLIER_PACK_CATALOG.durationHours * 60 * 60 * 1000).toISOString();
 
         await supabase
           .from('profiles')
-          .update({ energy: newEnergy, multiplier: 2, multiplier_expires_at: expiresAt })
+          .update({ multiplier: MULTIPLIER_PACK_CATALOG.multiplier, multiplier_expires_at: expiresAt })
           .eq('id', profile.id);
 
         return new Response(
-          JSON.stringify({ success: true, multiplier: 2, expiresAt, energy: newEnergy }),
+          JSON.stringify({ success: true, multiplier: MULTIPLIER_PACK_CATALOG.multiplier, expiresAt }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1958,29 +2017,8 @@ Deno.serve(async (req) => {
         }
 
         // Verify transaction on TON blockchain
-        const tonApiUrl = `https://tonapi.io/v2/blockchain/transactions/${txHash}`;
-        const tonResponse = await fetch(tonApiUrl, {
-          headers: { 'Accept': 'application/json' },
-        });
-
-        if (!tonResponse.ok) {
-          return new Response(
-            JSON.stringify({ error: 'Transaction not found on blockchain' }),
-            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const txData = await tonResponse.json();
-        const messages = txData?.out_messages || [];
         const expectedNano = Math.floor(parseFloat(pack.priceTon) * 1e9);
-        const validMessage = messages.find((msg: any) => {
-          if (!msg) return false;
-          const msgAmount = parseInt(msg.value || '0', 10);
-          const msgAddr = msg.destination?.address || msg.recipient?.address;
-          return msgAmount >= expectedNano && msgAddr === DAO_WALLET_ADDRESS;
-        });
-
-        if (!validMessage) {
+        if (!(await transactionPaysDao(txHash, expectedNano))) {
           return new Response(
             JSON.stringify({ error: 'Transaction does not match expected payment' }),
             { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

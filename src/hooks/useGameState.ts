@@ -396,10 +396,10 @@ export const useGameState = () => {
   }, [initData]);
 
   // Activate multiplier
-  const activateMultiplier = useCallback(async () => {
+  const activateMultiplier = useCallback(async (txHash: string) => {
     if (!initData && !webSessionToken) return false;
     try {
-      const data = await callGameApi('buy-multiplier', initData || '', undefined, webSessionToken);
+      const data = await callGameApi('buy-multiplier', initData || '', { txHash }, webSessionToken);
       if (data.success) {
         setGameState(prev => ({
           ...prev,
