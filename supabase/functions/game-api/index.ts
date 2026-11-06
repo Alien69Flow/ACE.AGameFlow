@@ -676,11 +676,9 @@ Deno.serve(async (req) => {
           );
         }
         
-        const startedAt = new Date(mission.started_at);
-        const elapsed = (Date.now() - startedAt.getTime()) / 1000;
-        if (elapsed < 33) {
+        if (!mission.completed_at) {
           return new Response(
-            JSON.stringify({ error: 'Verification not complete', remainingSeconds: Math.ceil(33 - elapsed) }),
+            JSON.stringify({ error: 'Mission not verified' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
@@ -1439,12 +1437,9 @@ Deno.serve(async (req) => {
                 const now = new Date().toISOString();
                 await supabase
                   .from('missions_completed')
-                  .upsert({
-                    profile_id: profile.id,
-                    mission_id: missionId,
-                    started_at: now,
-                    completed_at: now,
-                  }, { onConflict: 'profile_id,mission_id' });
+                  .update({ completed_at: now })
+                  .eq('profile_id', profile.id)
+                  .eq('mission_id', missionId);
 
                 return new Response(
                   JSON.stringify({ verified: true }),
@@ -1476,7 +1471,7 @@ Deno.serve(async (req) => {
           // X verification requires API keys - not yet configured
           // Fall through to time-based verification
           return new Response(
-            JSON.stringify({ verified: false, error: 'Verificación de X próximamente. Usa verificación por tiempo.' }),
+            JSON.stringify({ verified: false, error: 'Verificación de X próximamente.' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
