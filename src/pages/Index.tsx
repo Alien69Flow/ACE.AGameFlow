@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useGameState } from '@/hooks/useGameState';
+import { useGuestPlay, GUEST_MAX_STAMINA } from '@/hooks/useGuestPlay';
 import { useAudio } from '@/hooks/useAudio';
 import { StaminaBar } from '@/components/game/StaminaBar';
 import { Navigation } from '@/components/game/Navigation';
@@ -15,6 +16,7 @@ import { UpgradesScreen } from '@/screens/UpgradesScreen';
 import { AirdropScreen } from '@/screens/AirdropScreen';
 import { MinigamesScreen } from '@/screens/MinigamesScreen';
 import { Zap, Trophy, LogOut, Globe } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Auto-dismiss achievement toast component
 const AchievementToast = ({ achievement, onDismiss }: { achievement: { id: string; name: string; icon: string; reward: number }; onDismiss: () => void }) => {
@@ -50,6 +52,8 @@ const AchievementToast = ({ achievement, onDismiss }: { achievement: { id: strin
 
 type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop' | 'minigames';
 
+const GUEST_LOCKED_SCREENS: Screen[] = ['network', 'upgrades', 'airdrop'];
+
 const MISSIONS = [
   // Auto-verified missions (double reward)
   { id: 'tg_channel', name: 'Unirse al Canal', url: 'https://t.me/AlienFlow', icon: '✈️', reward: 100, verifiable: true, verifyType: 'telegram_channel' as const },
@@ -68,6 +72,9 @@ const MISSIONS = [
 const Index = () => {
   const { isReady, isTelegram, openLink, hapticFeedback, webSessionToken, signOutWeb } = useTelegram();
   const [showWebLogin, setShowWebLogin] = useState(false);
+  const [guestMode, setGuestMode] = useState(false);
+  const guest = useGuestPlay();
+  const isGuest = guestMode && !isTelegram && !webSessionToken;
   const { 
     gameState, 
     missions, 
@@ -141,9 +148,14 @@ const Index = () => {
   }, [offlineEarnings, isLoading]);
 
   const handleNavigate = useCallback((screen: Screen) => {
+    if (isGuest && GUEST_LOCKED_SCREENS.includes(screen)) {
+      toast.info('Crea tu cuenta para desbloquear este edificio');
+      setShowWebLogin(true);
+      return;
+    }
     playNavigateSound();
     setCurrentScreen(screen);
-  }, [playNavigateSound]);
+  }, [playNavigateSound, isGuest]);
 
   const handleEnterMine = useCallback(() => {
     playNavigateSound();
@@ -153,14 +165,19 @@ const Index = () => {
     }
   }, [playNavigateSound, tutorialStep]);
 
+  const guestSubmitScore = useCallback(async () => {
+    toast.info('Crea tu cuenta para guardar tu puntuación y ganar energía');
+    return null;
+  }, []);
+
   const handleTap = useCallback(async () => {
-    const success = await tapToroid();
+    const success = isGuest ? await guest.tap() : await tapToroid();
     if (success) {
       playTapSound();
       hapticFeedback('medium');
     }
     return success;
-  }, [tapToroid, playTapSound, hapticFeedback]);
+  }, [tapToroid, guest.tap, isGuest, playTapSound, hapticFeedback]);
 
   const handleStartMission = useCallback((missionId: string) => {
     startMission(missionId);
@@ -198,8 +215,8 @@ const Index = () => {
   }
 
   // Landing state for non-Telegram browsers
-  if (!isTelegram && !webSessionToken && !showWebLogin) {
-    return <LandingScreen onPlayInBrowser={() => setShowWebLogin(true)} />;
+  if (!isTelegram && !webSessionToken && !showWebLogin && !guestMode) {
+    return <LandingScreen onPlayInBrowser={() => setShowWebLogin(true)} onPlayAsGuest={() => setGuestMode(true)} />;
   }
 
   // Web login screen
@@ -213,13 +230,14 @@ const Index = () => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
+      setGuestMode(false);
       setShowWebLogin(false);
     };
     return <WebLoginScreen onLogin={handleLogin} onBack={() => setShowWebLogin(false)} />;
   }
 
   // Loading state for web users waiting for session
-  if (isLoading) {
+  if (isLoading && !isGuest) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
@@ -245,13 +263,22 @@ const Index = () => {
 
       {/* Stamina Bar */}
       <StaminaBar 
-        stamina={gameState.stamina} 
-        maxStamina={gameState.maxStamina} 
-        energy={gameState.energy}
+        stamina={isGuest ? guest.stamina : gameState.stamina}
+        maxStamina={isGuest ? GUEST_MAX_STAMINA : gameState.maxStamina}
+        energy={isGuest ? guest.energy : gameState.energy}
         multiplier={gameState.multiplier}
         multiplierExpiresAt={gameState.multiplierExpiresAt}
         achievementCounts={achievementCounts}
       />
+
+      {isGuest && (
+        <button
+          onClick={() => setShowWebLogin(true)}
+          className="fixed top-2 left-1/2 -translate-x-1/2 z-[65] whitespace-nowrap px-3 py-1 rounded-lg bg-card border border-secondary/60 font-display text-[10px] text-secondary hover:bg-secondary/10 transition-colors"
+        >
+          Modo prueba · Crear cuenta
+        </button>
+      )}
 
       {/* Offline Earnings Modal */}
       <AnimatePresence>
@@ -327,12 +354,13 @@ const Index = () => {
             key="mine"
             onTap={handleTap}
             onBack={() => handleNavigate('planet')}
-            stamina={gameState.stamina}
+            stamina={isGuest ? guest.stamina : gameState.stamina}
             tutorialStep={tutorialStep}
             multiplier={gameState.multiplier}
             multiplierExpiresAt={gameState.multiplierExpiresAt}
             onActivateMultiplier={activateMultiplier}
             onApplyEnergyPack={applyEnergyPack}
+            isGuest={isGuest}
           />
         )}
         {currentScreen === 'upgrades' && (
@@ -383,7 +411,7 @@ const Index = () => {
         {currentScreen === 'minigames' && (
           <MinigamesScreen
             key="minigames"
-            onSubmitScore={submitMinigameScore}
+            onSubmitScore={isGuest ? guestSubmitScore : submitMinigameScore}
             minigameScores={minigameScores}
             onFetchScores={fetchMinigameScores}
           />

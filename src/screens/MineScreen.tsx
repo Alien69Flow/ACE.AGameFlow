@@ -16,9 +16,10 @@ interface MineScreenProps {
   multiplierExpiresAt: string | null;
   onActivateMultiplier: (txHash: string) => Promise<boolean>;
   onApplyEnergyPack?: (packId: string, txHash: string) => Promise<boolean>;
+  isGuest?: boolean;
 }
 
-export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, multiplierExpiresAt, onActivateMultiplier, onApplyEnergyPack }: MineScreenProps) => {
+export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, multiplierExpiresAt, onActivateMultiplier, onApplyEnergyPack, isGuest = false }: MineScreenProps) => {
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [tonConnectUI] = useTonConnectUI();
   const [processingPackId, setProcessingPackId] = useState<string | null>(null);
@@ -26,6 +27,10 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
   const isMultiplierActive = multiplier > 1 && multiplierExpiresAt && new Date(multiplierExpiresAt) > new Date();
 
   const handleBuyPack = async (packId: string, priceTon: string) => {
+    if (isGuest) {
+      toast.info('Crea tu cuenta para comprar energía');
+      return;
+    }
     if (processingPackId) return;
     setProcessingPackId(packId);
     try {
@@ -39,7 +44,7 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
         ],
       });
 
-      const txHash = result?.boc || result?.id || '';
+      const txHash = result?.boc || '';
 
       if (onApplyEnergyPack && txHash) {
         const ok = await onApplyEnergyPack(packId, txHash);
@@ -62,6 +67,10 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
   };
 
   const handleBuyMultiplier = async (packId: string, priceTon: string) => {
+    if (isGuest) {
+      toast.info('Crea tu cuenta para activar el boost');
+      return;
+    }
     if (processingPackId) return;
     setProcessingPackId(packId);
     try {
@@ -75,7 +84,7 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
         ],
       });
 
-      const txHash = result?.boc || result?.id || '';
+      const txHash = result?.boc || '';
       if (!txHash) {
         toast.error('No se pudo obtener el hash de la transacción. Contacta soporte.');
         return;
@@ -173,6 +182,11 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
         <h2 className="font-display text-sm font-bold text-secondary text-glow-gold text-center">
           ⚡ INYECCIÓN DE NEUTRINOS
         </h2>
+        {isGuest && (
+          <p className="text-center font-body text-[10px] text-muted-foreground">
+            Modo prueba: tu progreso no se guarda. Crea una cuenta para comprar y reclamar.
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-2">
           {ENERGY_PACKS.map((pack) => (
             <motion.button

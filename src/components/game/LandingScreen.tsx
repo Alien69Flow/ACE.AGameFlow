@@ -98,7 +98,7 @@ function useHoverSound() {
   return { playBlip, playWhoosh };
 }
 
-export const LandingScreen = ({ onPlayInBrowser }: { onPlayInBrowser?: () => void }) => {
+export const LandingScreen = ({ onPlayInBrowser, onPlayAsGuest }: { onPlayInBrowser?: () => void; onPlayAsGuest?: () => void }) => {
   const [typedText, setTypedText] = useState('');
   const [showCursor, setShowCursor] = useState(true);
   const { playBlip, playWhoosh } = useHoverSound();
@@ -295,6 +295,32 @@ export const LandingScreen = ({ onPlayInBrowser }: { onPlayInBrowser?: () => voi
                 style={{ fontFamily: "'Rajdhani', sans-serif" }}
               >
                 NO TELEGRAM NEEDED · EMAIL OR WALLET
+              </span>
+            </div>
+          </motion.button>
+        )}
+
+        {onPlayAsGuest && (
+          <motion.button
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 2.5, duration: 0.6, type: 'spring', stiffness: 120 }}
+            onClick={onPlayAsGuest}
+            onMouseEnter={playWhoosh}
+            className="relative group w-full max-w-xs"
+          >
+            <div className="relative px-6 py-2.5 rounded-2xl border border-primary/40 bg-card/80 backdrop-blur-md hover:bg-primary/10 transition-all duration-300 text-center">
+              <span
+                className="text-sm font-bold text-primary tracking-wider block"
+                style={{ fontFamily: "'Orbitron', sans-serif" }}
+              >
+                PROBAR SIN CUENTA
+              </span>
+              <span
+                className="text-[9px] text-muted-foreground mt-0.5 tracking-[0.2em] block"
+                style={{ fontFamily: "'Rajdhani', sans-serif" }}
+              >
+                MINA Y MINIJUEGOS · SIN GUARDAR
               </span>
             </div>
           </motion.button>
