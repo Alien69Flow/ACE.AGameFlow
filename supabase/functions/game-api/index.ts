@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.93.3";
+import { ARENA_DAILY_BATTLE_LIMIT, BUILDING_CATALOG, BUILDING_SLOT_IDS, type BuildingSlotId, pickBotDeck, simulateBattle, starterDeck } from "./buildings.ts";
 
 const ALLOWED_ORIGINS = [
   'https://ljasfllzyeoxvfozzple.supabase.co',
@@ -1113,6 +1114,228 @@ Deno.serve(async (req) => {
             energy: newEnergy,
             upgradeType,
             newAchievements: newAchievementsUpgrade,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get-buildings': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: owned, error: ownedError } = await supabase
+          .from('buildings')
+          .select('slot_id, level')
+          .eq('profile_id', profile.id);
+
+        if (ownedError) {
+          return new Response(
+            JSON.stringify({ error: 'Could not load buildings' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const levelBySlot = new Map((owned || []).map(b => [b.slot_id as number, b.level as number]));
+        const buildings = BUILDING_SLOT_IDS.map(slotId => {
+          const meta = BUILDING_CATALOG[slotId];
+          const level = levelBySlot.get(slotId) ?? 0;
+          const maxLevel = meta.costs.length;
+          return {
+            slotId,
+            type: meta.type,
+            name: meta.name,
+            icon: meta.icon,
+            level,
+            maxLevel,
+            nextCost: level < maxLevel ? meta.costs[level] : null,
+          };
+        });
+
+        return new Response(
+          JSON.stringify({ buildings, energy: profile.energy }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'buy-building': {
+        const body = await req.json();
+        const slotId = Number(body.slotId);
+
+        if (!BUILDING_SLOT_IDS.includes(slotId as BuildingSlotId)) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid building slot' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const meta = BUILDING_CATALOG[slotId as BuildingSlotId];
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: existing } = await supabase
+          .from('buildings')
+          .select('id, level')
+          .eq('profile_id', profile.id)
+          .eq('slot_id', slotId)
+          .maybeSingle();
+
+        const currentLevel = existing?.level ?? 0;
+        if (currentLevel >= meta.costs.length) {
+          return new Response(
+            JSON.stringify({ error: 'Max level reached' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const cost = meta.costs[currentLevel];
+        if (profile.energy < cost) {
+          return new Response(
+            JSON.stringify({ error: 'Not enough energy', required: cost, current: profile.energy }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: charged } = await supabase
+          .from('profiles')
+          .update({ energy: profile.energy - cost })
+          .eq('id', profile.id)
+          .eq('energy', profile.energy)
+          .select('energy')
+          .maybeSingle();
+
+        if (!charged) {
+          return new Response(
+            JSON.stringify({ error: 'Energy changed, please try again' }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const newLevel = currentLevel + 1;
+        const writeResult = existing
+          ? await supabase.from('buildings').update({ level: newLevel }).eq('id', existing.id)
+          : await supabase.from('buildings').insert({
+              profile_id: profile.id,
+              slot_id: slotId,
+              building_type: meta.type,
+              level: 1,
+            });
+
+        if (writeResult.error) {
+          await supabase
+            .from('profiles')
+            .update({ energy: charged.energy + cost })
+            .eq('id', profile.id);
+          return new Response(
+            JSON.stringify({ error: 'Could not save building' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, slotId, newLevel, energy: charged.energy }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'arena-battle': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: arena } = await supabase
+          .from('buildings')
+          .select('level')
+          .eq('profile_id', profile.id)
+          .eq('slot_id', 5)
+          .maybeSingle();
+
+        if (!arena) {
+          return new Response(
+            JSON.stringify({ error: 'Build the Arena first' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const startOfDay = new Date();
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const { count: battlesToday } = await supabase
+          .from('arena_battles')
+          .select('id', { count: 'exact', head: true })
+          .eq('profile_id', profile.id)
+          .gte('created_at', startOfDay.toISOString());
+
+        if ((battlesToday ?? 0) >= ARENA_DAILY_BATTLE_LIMIT) {
+          return new Response(
+            JSON.stringify({ error: 'Daily battle limit reached' }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const playerDeck = starterDeck();
+        const botDeck = pickBotDeck();
+        const { won, log } = simulateBattle(playerDeck, botDeck);
+        const reward = won ? 200 * arena.level : 25;
+
+        const { data: credited } = await supabase
+          .from('profiles')
+          .update({ energy: profile.energy + reward })
+          .eq('id', profile.id)
+          .eq('energy', profile.energy)
+          .select('energy')
+          .maybeSingle();
+
+        if (!credited) {
+          return new Response(
+            JSON.stringify({ error: 'Energy changed, please try again' }),
+            { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        await supabase.from('arena_battles').insert({
+          profile_id: profile.id,
+          won,
+          energy_reward: reward,
+        });
+
+        return new Response(
+          JSON.stringify({
+            won,
+            reward,
+            energy: credited.energy,
+            log,
+            playerDeck: playerDeck.map(c => c.name),
+            botDeck: botDeck.map(c => c.name),
+            battlesLeft: ARENA_DAILY_BATTLE_LIMIT - (battlesToday ?? 0) - 1,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

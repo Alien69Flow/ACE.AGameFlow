@@ -1,11 +1,14 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Earth3D } from '@/components/game/Earth3D';
 import { HexSlot } from '@/components/game/HexSlot';
+import { BuildingModal } from '@/components/game/BuildingModal';
+import { ArenaModal } from '@/components/game/ArenaModal';
 import { getTutorialHighlight } from '@/components/game/Tutorial';
 import { LuckyWheel } from '@/components/game/LuckyWheel';
 import { Gift, Zap, Flame, Sparkles } from 'lucide-react';
 import { useTelegram } from '@/hooks/useTelegram';
+import type { ArenaBattleResult, BuildingInfo } from '@/hooks/useGameState';
 
 interface PlanetScreenProps {
   onEnterMine: () => void;
@@ -15,24 +18,59 @@ interface PlanetScreenProps {
   onClaimDaily: () => Promise<{ reward: number; streak: number } | null>;
   onSpinWheel: () => Promise<{ prize: { type: string; value: number; label: string } | null; canSpinFree: boolean; error?: string }>;
   canSpinFree: boolean;
+  energy: number;
+  onFetchBuildings: () => Promise<{ buildings: BuildingInfo[]; energy: number } | null>;
+  onBuyBuilding: (slotId: number) => Promise<{ success: boolean } | null>;
+  onArenaBattle: () => Promise<ArenaBattleResult | null>;
 }
 
-const slots = [
-  { id: 1, name: 'Core Mina', isUnlocked: true },
-  { id: 2, name: 'Slot 2', isUnlocked: false },
-  { id: 3, name: 'Slot 3', isUnlocked: false },
-  { id: 4, name: 'Slot 4', isUnlocked: false },
-  { id: 5, name: 'Slot 5', isUnlocked: false },
-  { id: 6, name: 'Slot 6', isUnlocked: false },
-];
+const BUILDING_SLOT_IDS = [2, 3, 4, 5, 6];
 
-export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily, onSpinWheel, canSpinFree }: PlanetScreenProps) => {
+export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily, onSpinWheel, canSpinFree, energy, onFetchBuildings, onBuyBuilding, onArenaBattle }: PlanetScreenProps) => {
   const { hapticFeedback } = useTelegram();
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [showDailyModal, setShowDailyModal] = useState(dailyRewardAvailable);
   const [claimResult, setClaimResult] = useState<{ reward: number; streak: number } | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [showWheel, setShowWheel] = useState(false);
+  const [buildings, setBuildings] = useState<BuildingInfo[]>([]);
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [showArena, setShowArena] = useState(false);
+  const [buying, setBuying] = useState(false);
+
+  const loadBuildings = async () => {
+    const data = await onFetchBuildings();
+    if (data) setBuildings(data.buildings);
+  };
+
+  useEffect(() => {
+    loadBuildings();
+  }, []);
+
+  const handleBuy = async (slotId: number) => {
+    setBuying(true);
+    const result = await onBuyBuilding(slotId);
+    if (result?.success) {
+      hapticFeedback('heavy');
+      await loadBuildings();
+    }
+    setBuying(false);
+  };
+
+  const selectedBuilding = buildings.find(b => b.slotId === selectedSlot) ?? null;
+
+  const slots = [
+    { id: 1, name: 'Core Mina', isUnlocked: true, onClick: onEnterMine },
+    ...BUILDING_SLOT_IDS.map(id => {
+      const building = buildings.find(b => b.slotId === id);
+      return {
+        id,
+        name: building?.name ?? `Slot ${id}`,
+        isUnlocked: (building?.level ?? 0) > 0,
+        onClick: building ? () => setSelectedSlot(id) : undefined,
+      };
+    }),
+  ];
 
   const handleClaim = async () => {
     setClaiming(true);
@@ -157,11 +195,36 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
             index={index}
             isUnlocked={slot.isUnlocked}
             name={slot.name}
-            onClick={slot.isUnlocked ? onEnterMine : undefined}
+            onClick={slot.onClick}
             isHighlighted={highlight === 'core-mina' && slot.id === 1}
           />
         ))}
       </div>
+
+      {/* Building Modal */}
+      <AnimatePresence>
+        {selectedBuilding && (
+          <BuildingModal
+            key={selectedBuilding.slotId}
+            building={selectedBuilding}
+            energy={energy}
+            buying={buying}
+            onBuy={() => handleBuy(selectedBuilding.slotId)}
+            onOpenArena={() => setShowArena(true)}
+            onClose={() => setSelectedSlot(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Arena Modal */}
+      <AnimatePresence>
+        {showArena && (
+          <ArenaModal
+            onBattle={onArenaBattle}
+            onClose={() => setShowArena(false)}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Lucky Wheel Floating Button */}
       <motion.button

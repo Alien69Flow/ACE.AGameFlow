@@ -97,6 +97,9 @@ const Index = () => {
     activateMultiplier,
     fetchUpgrades,
     buyUpgrade,
+    fetchBuildings,
+    buyBuilding,
+    arenaBattle,
     offlineEarnings,
     dismissOfflineEarnings,
     clan,
@@ -351,6 +354,10 @@ const Index = () => {
             onClaimDaily={claimDaily}
             onSpinWheel={spinWheel}
             canSpinFree={canSpinFree}
+            energy={gameState.energy}
+            onFetchBuildings={fetchBuildings}
+            onBuyBuilding={buyBuilding}
+            onArenaBattle={arenaBattle}
           />
         )}
         {currentScreen === 'mine' && (

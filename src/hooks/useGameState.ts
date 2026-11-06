@@ -71,6 +71,26 @@ interface ClanInfo {
   total_energy: number;
 }
 
+export interface BuildingInfo {
+  slotId: number;
+  type: string;
+  name: string;
+  icon: string;
+  level: number;
+  maxLevel: number;
+  nextCost: number | null;
+}
+
+export interface ArenaBattleResult {
+  won: boolean;
+  reward: number;
+  energy: number;
+  log: string[];
+  playerDeck: string[];
+  botDeck: string[];
+  battlesLeft: number;
+}
+
 interface UpgradeInfo {
   type: string;
   currentLevel: number;
@@ -464,6 +484,41 @@ export const useGameState = () => {
     }
   }, [initData]);
 
+  // Buildings
+  const fetchBuildings = useCallback(async () => {
+    if (!initData && !webSessionToken) return null;
+    try {
+      const data = await callGameApi('get-buildings', initData || '', undefined, webSessionToken);
+      return data as { buildings: BuildingInfo[]; energy: number };
+    } catch {
+      return null;
+    }
+  }, [initData, webSessionToken]);
+
+  const buyBuilding = useCallback(async (slotId: number) => {
+    if (!initData && !webSessionToken) return null;
+    try {
+      const data = await callGameApi('buy-building', initData || '', { slotId }, webSessionToken);
+      setGameState(prev => ({ ...prev, energy: data.energy }));
+      return data as { success: boolean; slotId: number; newLevel: number; energy: number };
+    } catch {
+      toast.error('No se pudo comprar el edificio');
+      return null;
+    }
+  }, [initData, webSessionToken]);
+
+  const arenaBattle = useCallback(async () => {
+    if (!initData && !webSessionToken) return null;
+    try {
+      const data = await callGameApi('arena-battle', initData || '', {}, webSessionToken);
+      setGameState(prev => ({ ...prev, energy: data.energy }));
+      return data as ArenaBattleResult;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'No se pudo completar la batalla');
+      return null;
+    }
+  }, [initData, webSessionToken]);
+
   // Dismiss offline earnings
   const dismissOfflineEarnings = useCallback(() => {
     setOfflineEarnings(0);
@@ -676,6 +731,9 @@ export const useGameState = () => {
     activateMultiplier,
     fetchUpgrades,
     buyUpgrade,
+    fetchBuildings,
+    buyBuilding,
+    arenaBattle,
     offlineEarnings,
     dismissOfflineEarnings,
     clan,

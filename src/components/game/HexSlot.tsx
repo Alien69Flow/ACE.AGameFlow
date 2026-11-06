@@ -28,19 +28,19 @@ export const HexSlot = ({ index, isUnlocked, name, onClick, isHighlighted }: Hex
       transition={{ delay: index * 0.1, type: 'spring', stiffness: 200 }}
     >
       <motion.button
-        onClick={isUnlocked ? onClick : undefined}
-        disabled={!isUnlocked}
+        onClick={onClick}
+        disabled={!onClick}
         className={`
           relative w-[72px] h-[72px] flex items-center justify-center
           transition-all duration-300
-          ${isUnlocked 
+          ${onClick
             ? 'cursor-pointer hover:scale-110' 
             : 'cursor-not-allowed opacity-60'
           }
           ${isHighlighted ? 'z-50' : ''}
         `}
-        whileHover={isUnlocked ? { scale: 1.1 } : {}}
-        whileTap={isUnlocked ? { scale: 0.95 } : {}}
+        whileHover={onClick ? { scale: 1.1 } : {}}
+        whileTap={onClick ? { scale: 0.95 } : {}}
       >
         {/* Hexagon shape */}
         <svg
@@ -77,7 +77,12 @@ export const HexSlot = ({ index, isUnlocked, name, onClick, isHighlighted }: Hex
               </span>
             </>
           ) : (
-            <Lock className="w-4 h-4 text-secondary text-glow-gold" />
+            <>
+              <Lock className="w-4 h-4 text-secondary text-glow-gold" />
+              <span className="text-[8px] font-display font-bold text-secondary mt-0.5">
+                {name}
+              </span>
+            </>
           )}
         </div>
 
