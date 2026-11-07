@@ -250,13 +250,6 @@ Deno.serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const botToken = Deno.env.get('TELEGRAM_BOT_TOKEN');
-    
-    if (!botToken) {
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
 
     const initData = req.headers.get('x-telegram-init-data');
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
@@ -268,6 +261,12 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     if (initData) {
+      if (!botToken) {
+        return new Response(
+          JSON.stringify({ error: 'Server configuration error' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
       const validation = await validateTelegramInitData(initData, botToken);
       if (!validation.valid || !validation.user) {
         return new Response(
