@@ -12,6 +12,12 @@ export const BUILDING_SLOT_IDS = Object.keys(BUILDING_CATALOG).map(Number) as Bu
 
 export const ARENA_DAILY_BATTLE_LIMIT = 10;
 
+export const CENTRAL_ENERGY_SLOT_ID = 2;
+
+export function regenBonusMultiplier(centralEnergyLevel: number): number {
+  return 1 + 0.1 * centralEnergyLevel;
+}
+
 export interface ArenaCard {
   id: string;
   name: string;

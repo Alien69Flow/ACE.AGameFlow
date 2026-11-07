@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.93.3";
-import { ARENA_DAILY_BATTLE_LIMIT, BUILDING_CATALOG, BUILDING_SLOT_IDS, type BuildingSlotId, pickBotDeck, simulateBattle, starterDeck } from "./buildings.ts";
+import { ARENA_DAILY_BATTLE_LIMIT, BUILDING_CATALOG, BUILDING_SLOT_IDS, CENTRAL_ENERGY_SLOT_ID, type BuildingSlotId, pickBotDeck, regenBonusMultiplier, simulateBattle, starterDeck } from "./buildings.ts";
 
 const ALLOWED_ORIGINS = [
   'https://ljasfllzyeoxvfozzple.supabase.co',
@@ -239,6 +239,16 @@ async function transactionPaysDao(txHash: string, expectedNano: number): Promise
   });
 }
 
+async function getCentralEnergyLevel(supabase: ReturnType<typeof createClient>, profileId: string): Promise<number> {
+  const { data } = await supabase
+    .from('buildings')
+    .select('level')
+    .eq('profile_id', profileId)
+    .eq('slot_id', CENTRAL_ENERGY_SLOT_ID)
+    .maybeSingle();
+  return data?.level ?? 0;
+}
+
 Deno.serve(async (req) => {
   const corsHeaders = getCorsHeaders(req.headers.get('origin'));
 
@@ -407,7 +417,8 @@ Deno.serve(async (req) => {
           const now = new Date();
           const secondsElapsed = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
           const regenRate = UPGRADE_CATALOG.regen_speed.values[profile.regen_speed_level] || 1;
-          const staminaRegen = Math.floor(secondsElapsed / 60) * regenRate;
+          const centralLevel = await getCentralEnergyLevel(supabase, profile.id);
+          const staminaRegen = Math.floor(Math.floor(secondsElapsed / 60) * regenRate * regenBonusMultiplier(centralLevel));
           
           // Get max stamina from upgrade
           const actualMaxStamina = UPGRADE_CATALOG.max_stamina.values[profile.max_stamina_level] || 100;
@@ -749,7 +760,8 @@ Deno.serve(async (req) => {
         const now = new Date();
         const secondsElapsed = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
         const regenRate = UPGRADE_CATALOG.regen_speed.values[profile.regen_speed_level] || 1;
-        const staminaRegen = Math.floor(secondsElapsed / 60) * regenRate;
+        const centralLevel = await getCentralEnergyLevel(supabase, profile.id);
+        const staminaRegen = Math.floor(Math.floor(secondsElapsed / 60) * regenRate * regenBonusMultiplier(centralLevel));
         const actualMaxStamina = UPGRADE_CATALOG.max_stamina.values[profile.max_stamina_level] || 100;
         const newStamina = Math.min(profile.stamina + staminaRegen, actualMaxStamina);
         
