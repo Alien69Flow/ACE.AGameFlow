@@ -11,7 +11,7 @@ interface HexSlotProps {
 
 export const HexSlot = ({ index, isUnlocked, name, onClick, isHighlighted }: HexSlotProps) => {
   const angle = (index * 60 - 90) * (Math.PI / 180);
-  const radius = 110;
+  const radius = 172;
   const x = Math.cos(angle) * radius;
   const y = Math.sin(angle) * radius;
 

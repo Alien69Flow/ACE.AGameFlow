@@ -187,7 +187,7 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
       </motion.div>
 
       {/* Earth and Hex Slots */}
-      <div className="relative w-80 h-80">
+      <div className="relative w-96 h-96">
         <Earth3D className="absolute inset-0 w-full h-full" />
         {slots.map((slot, index) => (
           <HexSlot
