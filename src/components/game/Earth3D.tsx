@@ -1,9 +1,21 @@
-import { Suspense, useRef } from 'react';
+import { Component, Suspense, useRef, type ReactNode } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Sphere, Stars, OrbitControls, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
-const TEXTURE_BASE = 'https://unpkg.com/three@0.160.1/examples/textures/planets';
+const TEXTURE_BASE = 'https://threejs.org/examples/textures/planets';
+
+class GlobeErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+
+  render() {
+    return this.state.failed ? null : this.props.children;
+  }
+}
 
 const EarthMesh = () => {
   const earthRef = useRef<THREE.Mesh>(null);
@@ -57,9 +69,11 @@ export const Earth3D = ({ className }: Earth3DProps) => {
 
         <Stars radius={100} depth={50} count={2000} factor={4} saturation={0} fade speed={1} />
 
-        <Suspense fallback={null}>
-          <EarthMesh />
-        </Suspense>
+        <GlobeErrorBoundary>
+          <Suspense fallback={null}>
+            <EarthMesh />
+          </Suspense>
+        </GlobeErrorBoundary>
 
         <OrbitControls
           enableZoom={false}
