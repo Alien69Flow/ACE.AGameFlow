@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.93.3";
-import { ARENA_DAILY_BATTLE_LIMIT, BUILDING_CATALOG, BUILDING_SLOT_IDS, CENTRAL_ENERGY_SLOT_ID, type BuildingSlotId, pickBotDeck, regenBonusMultiplier, simulateBattle, starterDeck } from "./buildings.ts";
+import { ARENA_DAILY_BATTLE_LIMIT, BUILDING_CATALOG, BUILDING_SLOT_IDS, CENTRAL_ENERGY_SLOT_ID, LABORATORY_SLOT_ID, type BuildingSlotId, minigameBonusMultiplier, pickBotDeck, regenBonusMultiplier, simulateBattle, starterDeck } from "./buildings.ts";
 
 const ALLOWED_ORIGINS = [
   'https://ljasfllzyeoxvfozzple.supabase.co',
@@ -2030,8 +2030,16 @@ Deno.serve(async (req) => {
           }
         }
         
+        const { data: laboratory } = await supabase
+          .from('buildings')
+          .select('level')
+          .eq('profile_id', profile.id)
+          .eq('slot_id', LABORATORY_SLOT_ID)
+          .maybeSingle();
+
         // Calculate reward (capped)
-        const reward = Math.min(Math.floor(score * catalog.rewardPerPoint), catalog.maxReward);
+        const labBonus = minigameBonusMultiplier(laboratory?.level ?? 0);
+        const reward = Math.min(Math.floor(score * catalog.rewardPerPoint * labBonus), catalog.maxReward);
         const isHighScore = !existingScore || score > existingScore.high_score;
         const newHighScore = isHighScore ? score : existingScore!.high_score;
         

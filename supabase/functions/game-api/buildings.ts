@@ -14,6 +14,12 @@ export const ARENA_DAILY_BATTLE_LIMIT = 10;
 
 export const CENTRAL_ENERGY_SLOT_ID = 2;
 
+export const LABORATORY_SLOT_ID = 3;
+
+export function minigameBonusMultiplier(laboratoryLevel: number): number {
+  return 1 + 0.1 * laboratoryLevel;
+}
+
 export function regenBonusMultiplier(centralEnergyLevel: number): number {
   return 1 + 0.1 * centralEnergyLevel;
 }
