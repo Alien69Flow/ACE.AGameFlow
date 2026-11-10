@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { TonConnectButton } from '@tonconnect/ui-react';
 import { Copy, Send, Users, Trophy, Crown, Medal, Award, Zap, Shield, LogOut, Plus, Check, Lock } from 'lucide-react';
 import { MissionCard } from '@/components/game/MissionCard';
 import { EcosystemLink } from '@/components/game/EcosystemLink';
@@ -91,6 +92,7 @@ const ecosystemLinks = [
 ];
 
 const daoEcosystemLinks = [
+  { name: 'ACE.AlienFlow.Space', description: 'Miniapp principal', icon: '🛸', url: OFFICIAL_LINKS.ace },
   { name: 'Aitor.AlienFlow.Space', description: 'Sub-proyecto DAO', icon: '🌐', url: OFFICIAL_LINKS.aitor },
   { name: 'ADEX.AlienFlow.Space', description: 'Plataforma de intercambio', icon: '📊', url: OFFICIAL_LINKS.adex },
   { name: 'ATrip.AlienFlow.Space', description: 'Experiencias y viajes', icon: '🚀', url: OFFICIAL_LINKS.atrip },
@@ -288,6 +290,18 @@ export const NetworkScreen = ({
                     <MissionCard {...mission} onStart={() => onStartMission(mission.id)} onClaim={() => onClaimMission(mission.id, mission.reward)} onVerify={mission.verifiable && mission.verifyType ? () => onVerifyMission(mission.id, mission.verifyType!) : undefined} openLink={openLink} />
                   </motion.div>
                 ))}
+              </div>
+            </section>
+
+            <section>
+              <motion.h2 initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="font-display text-base font-bold text-primary text-glow mb-2">
+                WALLETS
+              </motion.h2>
+              <div className="space-y-1.5">
+                <div className="flex justify-center p-3 rounded-lg bg-card border border-border">
+                  <TonConnectButton />
+                </div>
+                <EcosystemLink name="Reown (WalletConnect)" icon="🔗" comingSoon openLink={openLink} />
               </div>
             </section>
 
