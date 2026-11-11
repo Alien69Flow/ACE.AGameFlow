@@ -25,6 +25,13 @@ interface PlanetScreenProps {
 }
 
 const BUILDING_SLOT_IDS = [2, 3, 4, 5, 6];
+const BUILDING_PREVIEWS: Record<number, BuildingInfo> = {
+  2: { slotId: 2, type: 'central_energy', name: 'Central Energética', icon: '⚡', level: 0, maxLevel: 3, nextCost: 1000 },
+  3: { slotId: 3, type: 'laboratory', name: 'Laboratorio', icon: '🔬', level: 0, maxLevel: 3, nextCost: 1500 },
+  4: { slotId: 4, type: 'card_hangar', name: 'Hangar de Cartas', icon: '🃏', level: 0, maxLevel: 3, nextCost: 2000 },
+  5: { slotId: 5, type: 'arena', name: 'Arena', icon: '⚔️', level: 0, maxLevel: 3, nextCost: 2500 },
+  6: { slotId: 6, type: 'coliseum', name: 'Coliseo', icon: '🏟️', level: 0, maxLevel: 3, nextCost: 5000 },
+};
 
 export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily, onSpinWheel, canSpinFree, energy, onFetchBuildings, onBuyBuilding, onArenaBattle }: PlanetScreenProps) => {
   const { hapticFeedback } = useTelegram();
@@ -45,7 +52,7 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
 
   useEffect(() => {
     loadBuildings();
-  }, []);
+  }, [onFetchBuildings]);
 
   const handleBuy = async (slotId: number) => {
     setBuying(true);
@@ -57,17 +64,19 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
     setBuying(false);
   };
 
-  const selectedBuilding = buildings.find(b => b.slotId === selectedSlot) ?? null;
+  const selectedBuilding = selectedSlot === null
+    ? null
+    : buildings.find(b => b.slotId === selectedSlot) ?? BUILDING_PREVIEWS[selectedSlot];
 
   const slots = [
     { id: 1, name: 'Core Mina', isUnlocked: true, onClick: onEnterMine },
     ...BUILDING_SLOT_IDS.map(id => {
-      const building = buildings.find(b => b.slotId === id);
+      const building = buildings.find(b => b.slotId === id) ?? BUILDING_PREVIEWS[id];
       return {
         id,
-        name: building?.name ?? `Slot ${id}`,
-        isUnlocked: (building?.level ?? 0) > 0,
-        onClick: building ? () => setSelectedSlot(id) : undefined,
+        name: building.name,
+        isUnlocked: building.level > 0,
+        onClick: () => setSelectedSlot(id),
       };
     }),
   ];
