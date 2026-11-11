@@ -23,8 +23,17 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [tonConnectUI] = useTonConnectUI();
   const [processingPackId, setProcessingPackId] = useState<string | null>(null);
+  const [sessionTaps, setSessionTaps] = useState(0);
+  const [combo, setCombo] = useState(0);
 
   const isMultiplierActive = multiplier > 1 && multiplierExpiresAt && new Date(multiplierExpiresAt) > new Date();
+
+  const handleMineTap = async () => {
+    const success = await onTap();
+    if (!success) return;
+    setSessionTaps(value => value + 1);
+    setCombo(value => (value >= 9 ? 0 : value + 1));
+  };
 
   const handleBuyPack = async (packId: string, priceTon: string) => {
     if (isGuest) {
@@ -154,11 +163,35 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
       {/* Toroid */}
       <div className="flex-shrink-0 my-4">
         <Toroid
-          onTap={onTap}
+          onTap={handleMineTap}
           stamina={stamina}
           isHighlighted={highlight === 'toroid'}
         />
       </div>
+
+      <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.25 }}
+        className="w-full max-w-xs mb-3 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2"
+      >
+        <div className="flex items-center justify-between font-display text-[10px]">
+          <span className="text-primary">RETO DE EXTRACCIÓN</span>
+          <span className="text-secondary">{sessionTaps}/30 taps</span>
+        </div>
+        <div className="mt-2 h-1.5 rounded-full bg-background/80 overflow-hidden">
+          <motion.div animate={{ width: `${Math.min(100, sessionTaps / 30 * 100)}%` }} className="h-full rounded-full bg-primary" />
+        </div>
+        <p className="mt-1 text-[10px] text-muted-foreground">
+          {sessionTaps >= 30 ? 'Reto completado. Sigue minando para mantener el combo.' : 'Completa 30 taps para dominar el núcleo.'}
+        </p>
+      </motion.div>
+
+      {combo > 1 && (
+        <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="mb-3 font-display text-xs text-secondary text-glow-gold">
+          COMBO x{combo}
+        </motion.div>
+      )}
 
       {/* Instructions */}
       <motion.p
