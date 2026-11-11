@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Gamepad2, Trophy, Zap, ArrowLeft, Brain, Target, Rocket } from 'lucide-react';
+import { Gamepad2, Trophy, Zap, ArrowLeft, Brain, Target, Rocket, Pickaxe } from 'lucide-react';
 import { useTelegram } from '@/hooks/useTelegram';
 
 interface MinigamesScreenProps {
@@ -9,12 +9,13 @@ interface MinigamesScreenProps {
   onFetchScores: () => Promise<void>;
 }
 
-type GameState = 'hub' | 'memory_match' | 'reaction_rush' | 'asteroid_blitz';
+type GameState = 'hub' | 'memory_match' | 'reaction_rush' | 'asteroid_blitz' | 'core_drill';
 
 const GAME_INFO: Record<string, { icon: typeof Brain; label: string; description: string; color: string }> = {
   memory_match:   { icon: Brain,     label: 'Memory Match',   description: 'Encuentra los pares alienígenas',     color: 'text-primary' },
   reaction_rush:  { icon: Target,    label: 'Reaction Rush',  description: 'Toca los alienígenas lo más rápido posible', color: 'text-secondary' },
   asteroid_blitz: { icon: Rocket,    label: 'Asteroid Blitz', description: 'Destruye asteroides antes de que escapen',   color: 'text-primary' },
+  core_drill:     { icon: Pickaxe,   label: 'Core Drill',     description: 'Extrae vetas de energía antes de que se agoten', color: 'text-secondary' },
 };
 
 export const MinigamesScreen = ({ onSubmitScore, minigameScores, onFetchScores }: MinigamesScreenProps) => {
@@ -122,6 +123,7 @@ export const MinigamesScreen = ({ onSubmitScore, minigameScores, onFetchScores }
       {gameState === 'memory_match' && <MemoryMatchGame onEnd={handleSubmitScore} />}
       {gameState === 'reaction_rush' && <ReactionRushGame onEnd={handleSubmitScore} />}
       {gameState === 'asteroid_blitz' && <AsteroidBlitzGame onEnd={handleSubmitScore} />}
+      {gameState === 'core_drill' && <CoreDrillGame onEnd={handleSubmitScore} />}
     </motion.div>
   );
 };
@@ -349,6 +351,36 @@ function AsteroidBlitzGame({ onEnd }: { onEnd: (gameId: string, score: number) =
             <span className="text-sm">☄️</span>
           </motion.button>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function CoreDrillGame({ onEnd }: { onEnd: (gameId: string, score: number) => void }) {
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(25);
+  const [vein, setVein] = useState({ x: 50, y: 50 });
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onEnd('core_drill', score);
+      return;
+    }
+    const timer = setTimeout(() => setTimeLeft(value => value - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft, score, onEnd]);
+
+  const mine = () => {
+    setScore(value => value + 10);
+    setVein({ x: 12 + Math.random() * 76, y: 12 + Math.random() * 70 });
+  };
+
+  return (
+    <div className="flex-1 flex flex-col items-center px-4">
+      <div className="flex gap-4 mb-3 font-display text-xs"><span className="text-secondary">Energía: {score}</span><span className="text-primary">Tiempo: {timeLeft}s</span></div>
+      <div className="relative w-full max-w-sm flex-1 min-h-[400px] rounded-xl border border-secondary/30 bg-card/40 overflow-hidden">
+        <motion.button animate={{ left: `${vein.x}%`, top: `${vein.y}%` }} whileTap={{ scale: 0.8 }} onClick={mine} className="absolute -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-secondary/20 border-2 border-secondary text-2xl">⛏</motion.button>
+        <p className="absolute bottom-4 left-0 right-0 text-center font-body text-xs text-muted-foreground">Extrae las vetas antes de que termine el turno</p>
       </div>
     </div>
   );

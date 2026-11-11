@@ -15,6 +15,15 @@ export const BuildingModal = ({ building, energy, buying, onBuy, onOpenArena, on
   const isMaxed = building.level >= building.maxLevel;
   const cost = building.nextCost;
   const canAfford = cost !== null && energy >= cost;
+  const benefit = building.type === 'central_energy'
+    ? '+10% de regeneración de stamina por nivel'
+    : building.type === 'laboratory'
+      ? '+10% de recompensa en minijuegos por nivel'
+      : building.type === 'card_hangar'
+        ? 'Añade una carta especial al mazo por nivel'
+        : building.type === 'arena'
+          ? 'Desbloquea batallas diarias contra otros mazos'
+          : '+25% de recompensa por victoria en Arena por nivel';
 
   return (
     <motion.div
@@ -35,6 +44,9 @@ export const BuildingModal = ({ building, energy, buying, onBuy, onOpenArena, on
         <h2 className="font-display text-lg font-bold text-primary">{building.name}</h2>
         <p className="font-body text-xs text-muted-foreground">
           {isBuilt ? `Nivel ${building.level} de ${building.maxLevel}` : 'Sin construir'}
+        </p>
+        <p className="font-body text-xs text-primary/80 bg-primary/5 border border-primary/20 rounded-lg px-3 py-2">
+          {benefit}
         </p>
 
         {cost !== null && (

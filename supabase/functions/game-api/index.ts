@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.93.3";
-import { ARENA_DAILY_BATTLE_LIMIT, BUILDING_CATALOG, BUILDING_SLOT_IDS, CENTRAL_ENERGY_SLOT_ID, LABORATORY_SLOT_ID, type BuildingSlotId, minigameBonusMultiplier, pickBotDeck, regenBonusMultiplier, simulateBattle, starterDeck } from "./buildings.ts";
+import { ARENA_DAILY_BATTLE_LIMIT, BUILDING_CATALOG, BUILDING_SLOT_IDS, CARD_HANGAR_SLOT_ID, CENTRAL_ENERGY_SLOT_ID, COLOSSEUM_SLOT_ID, LABORATORY_SLOT_ID, type BuildingSlotId, minigameBonusMultiplier, pickBotDeck, regenBonusMultiplier, simulateBattle, starterDeck } from "./buildings.ts";
 
 const ALLOWED_ORIGINS = [
   'https://ljasfllzyeoxvfozzple.supabase.co',
@@ -207,6 +207,7 @@ const MINIGAME_CATALOG: Record<string, { rewardPerPoint: number; maxReward: numb
   memory_match:   { rewardPerPoint: 2,  maxReward: 200, dailyPlayLimit: 5 },
   reaction_rush:  { rewardPerPoint: 3,  maxReward: 300, dailyPlayLimit: 5 },
   asteroid_blitz: { rewardPerPoint: 1,  maxReward: 150, dailyPlayLimit: 5 },
+  core_drill:     { rewardPerPoint: 2,  maxReward: 250, dailyPlayLimit: 5 },
 };
 
 // Energy pack catalog (must match frontend)
@@ -1312,10 +1313,17 @@ Deno.serve(async (req) => {
           );
         }
 
-        const playerDeck = starterDeck();
+        const { data: supportBuildings } = await supabase
+          .from('buildings')
+          .select('slot_id, level')
+          .eq('profile_id', profile.id)
+          .in('slot_id', [CARD_HANGAR_SLOT_ID, COLOSSEUM_SLOT_ID]);
+        const supportLevels = new Map((supportBuildings || []).map(building => [building.slot_id, building.level]));
+        const playerDeck = starterDeck(supportLevels.get(CARD_HANGAR_SLOT_ID) ?? 0);
         const botDeck = pickBotDeck();
         const { won, log } = simulateBattle(playerDeck, botDeck);
-        const reward = won ? 200 * arena.level : 25;
+        const coliseumLevel = supportLevels.get(COLOSSEUM_SLOT_ID) ?? 0;
+        const reward = won ? Math.floor(200 * arena.level * (1 + coliseumLevel * 0.25)) : 25;
 
         const { data: credited } = await supabase
           .from('profiles')

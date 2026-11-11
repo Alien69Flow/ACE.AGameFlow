@@ -15,6 +15,8 @@ export const ARENA_DAILY_BATTLE_LIMIT = 10;
 export const CENTRAL_ENERGY_SLOT_ID = 2;
 
 export const LABORATORY_SLOT_ID = 3;
+export const CARD_HANGAR_SLOT_ID = 4;
+export const COLOSSEUM_SLOT_ID = 6;
 
 export function minigameBonusMultiplier(laboratoryLevel: number): number {
   return 1 + 0.1 * laboratoryLevel;
@@ -43,9 +45,11 @@ export const ARENA_CARDS: ArenaCard[] = [
 ];
 
 const STARTER_DECK_IDS = ['spark', 'drone', 'golem', 'raptor', 'bulwark'];
+const HANGAR_CARD_IDS = ['ghost', 'nova', 'titan'];
 
-export function starterDeck(): ArenaCard[] {
-  return STARTER_DECK_IDS.map(id => ARENA_CARDS.find(c => c.id === id)!).map(c => ({ ...c }));
+export function starterDeck(hangarLevel = 0): ArenaCard[] {
+  const cardIds = [...STARTER_DECK_IDS, ...HANGAR_CARD_IDS.slice(0, hangarLevel)];
+  return cardIds.map(id => ARENA_CARDS.find(c => c.id === id)!).map(c => ({ ...c }));
 }
 
 export function pickBotDeck(): ArenaCard[] {
