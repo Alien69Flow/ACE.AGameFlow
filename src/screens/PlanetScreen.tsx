@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { Earth3D } from '@/components/game/Earth3D';
+import { Earth3D, type BuildingSlotData, type BuildingType } from '@/components/game/Earth3D';
 import { HexSlot } from '@/components/game/HexSlot';
 import { BuildingModal } from '@/components/game/BuildingModal';
 import { ArenaModal } from '@/components/game/ArenaModal';
@@ -81,8 +81,15 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
     }),
   ];
 
+  const earth3DBuildings: BuildingSlotData[] = [
+    { slotId: 1, type: 'core_mina', level: 1 },
+    ...BUILDING_SLOT_IDS.map(id => {
+      const b = buildings.find(bd => bd.slotId === id) ?? BUILDING_PREVIEWS[id];
+      return { slotId: id, type: b.type as BuildingType, level: b.level };
+    }),
+  ];
+
   const handleClaim = async () => {
-    setClaiming(true);
     const result = await onClaimDaily();
     if (result) {
       setClaimResult(result);
@@ -197,7 +204,7 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
 
       {/* Earth and Hex Slots */}
       <div className="relative w-96 h-96">
-        <Earth3D className="absolute inset-0 w-full h-full" />
+        <Earth3D className="absolute inset-0 w-full h-full" buildings={earth3DBuildings} />
         {slots.map((slot, index) => (
           <HexSlot
             key={slot.id}

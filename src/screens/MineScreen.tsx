@@ -146,7 +146,7 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
           CORE MINA
         </h1>
         <p className="font-body text-xs text-muted-foreground">
-          Toroide Gravitatorio Nivel 1
+          Asteroide de Energía Punto Cero
         </p>
         {isMultiplierActive && (
           <motion.div
@@ -201,7 +201,7 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
         className="text-center font-body text-xs text-muted-foreground px-8 mb-6"
       >
         {stamina > 0
-          ? 'Pulsa el Toroide para extraer Energía Punto Cero'
+          ? 'Golpea el asteroide para extraer Energía Punto Cero'
           : 'Sin Stamina. Espera recarga automática (+1/min)'}
       </motion.p>
 
