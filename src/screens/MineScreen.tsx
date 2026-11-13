@@ -143,10 +143,10 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
         className="mt-14 text-center"
       >
         <h1 className="font-display text-xl font-bold text-primary text-glow mb-0.5">
-          CORE MINA
+          PLATAFORMA DE MINADO
         </h1>
         <p className="font-body text-xs text-muted-foreground">
-          Asteroide de Energía Punto Cero
+          Plataforma de Perforación Punto Cero
         </p>
         {isMultiplierActive && (
           <motion.div
@@ -201,7 +201,7 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
         className="text-center font-body text-xs text-muted-foreground px-8 mb-6"
       >
         {stamina > 0
-          ? 'Golpea el asteroide para extraer Energía Punto Cero'
+          ? 'Activa el taladro para extraer Energía Punto Cero'
           : 'Sin Stamina. Espera recarga automática (+1/min)'}
       </motion.p>
 

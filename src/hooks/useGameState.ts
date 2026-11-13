@@ -713,6 +713,48 @@ export const useGameState = () => {
     } catch { /* silent */ }
   }, [initData, webSessionToken]);
 
+  const claimAdReward = useCallback(async (adType: 'daily_bonus' | 'minigame_double' | 'satoshis_reward') => {
+    if (!initData && !webSessionToken) return null;
+    try {
+      const data = await callGameApi('claim-ad-reward', initData || '', { adType }, webSessionToken);
+      if (data.success) {
+        setGameState(prev => ({ ...prev, energy: data.energy }));
+        if (data.newAchievements) {
+          processNewAchievements(data.newAchievements);
+        }
+      }
+      return data;
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Failed' };
+    }
+  }, [initData, webSessionToken]);
+
+  const [satoshisBalance, setSatoshisBalance] = useState(0);
+  const [satoshisLedger, setSatoshisLedger] = useState<{ amount_sats: number; source: string; reference: string | null; created_at: string }[]>([]);
+
+  const fetchSatoshisBalance = useCallback(async () => {
+    if (!initData && !webSessionToken) return;
+    try {
+      const data = await callGameApi('get-satoshis-balance', initData || '', undefined, webSessionToken);
+      setSatoshisBalance(data.balance || 0);
+      setSatoshisLedger(data.ledger || []);
+    } catch { /* silent */ }
+  }, [initData, webSessionToken]);
+
+  const withdrawSatoshis = useCallback(async (lightningAddress: string, amount: number) => {
+    if (!initData && !webSessionToken) return null;
+    try {
+      const data = await callGameApi('withdraw-satoshis', initData || '', { lightningAddress, amount }, webSessionToken);
+      if (data.success) {
+        setSatoshisBalance(data.balance);
+        setSatoshisLedger(prev => [{ amount_sats: -amount, source: 'withdrawal', reference: lightningAddress, created_at: new Date().toISOString() }, ...prev]);
+      }
+      return data;
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : 'Failed' };
+    }
+  }, [initData, webSessionToken]);
+
   return {
     gameState,
     missions,
@@ -758,5 +800,10 @@ export const useGameState = () => {
     submitMinigameScore,
     minigameScores,
     fetchMinigameScores,
+    claimAdReward,
+    satoshisBalance,
+    satoshisLedger,
+    fetchSatoshisBalance,
+    withdrawSatoshis,
   };
 };

@@ -33,8 +33,8 @@ const SLOT_ANGLES: Record<number, number> = {
   6: 210,
 };
 
-const BUILDING_RADIUS = 2.4;
-const BUILDING_HEIGHT = 0.15;
+const BUILDING_RADIUS = 2.18;
+const BUILDING_HEIGHT = 0.28;
 
 function buildingPosition(slotId: number): [number, number, number] {
   const angleDeg = SLOT_ANGLES[slotId] ?? 0;
@@ -83,14 +83,25 @@ const EarthMesh = ({ buildings }: { buildings: BuildingSlotData[] }) => {
       </Sphere>
 
       <group ref={buildingsRef}>
-        {buildings.map((b) => (
-          <Building3D
-            key={b.slotId}
-            type={b.type}
-            level={b.level}
-            position={buildingPosition(b.slotId)}
-          />
-        ))}
+        {buildings.map((b) => {
+          const pos = buildingPosition(b.slotId);
+          const isGhost = b.level <= 0 && b.type !== 'core_mina';
+          return (
+            <group key={b.slotId}>
+              <pointLight
+                position={[pos[0] * 1.1, pos[1] + 0.3, pos[2] * 1.1]}
+                intensity={isGhost ? 2 : 6}
+                distance={1.5}
+                color={isGhost ? '#3a5a3a' : '#5cff2a'}
+              />
+              <Building3D
+                type={b.type}
+                level={b.level}
+                position={pos}
+              />
+            </group>
+          );
+        })}
       </group>
     </group>
   );

@@ -2297,6 +2297,181 @@ Deno.serve(async (req) => {
         );
       }
       
+      case 'claim-ad-reward': {
+        const body = await req.json();
+        const { adType } = body;
+
+        if (!adType || !['daily_bonus', 'minigame_double', 'satoshis_reward'].includes(adType)) {
+          return new Response(
+            JSON.stringify({ error: 'Invalid ad type' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy, satoshis_balance')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check cooldown: 1 claim per ad_type per 30 minutes
+        const cooldownMs = 30 * 60 * 1000;
+        const { data: recentClaim } = await supabase
+          .from('ad_reward_claims')
+          .select('claimed_at')
+          .eq('profile_id', profile.id)
+          .eq('ad_type', adType)
+          .order('claimed_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (recentClaim) {
+          const elapsed = Date.now() - new Date(recentClaim.claimed_at).getTime();
+          if (elapsed < cooldownMs) {
+            const remainingMin = Math.ceil((cooldownMs - elapsed) / 60000);
+            return new Response(
+              JSON.stringify({ error: `Cooldown active. Try again in ${remainingMin} min.`, cooldownRemaining: remainingMin }),
+              { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+
+        // Grant reward based on ad type
+        let energyReward = 0;
+        let satsReward = 0;
+
+        if (adType === 'daily_bonus') {
+          energyReward = 50;
+          satsReward = 5;
+        } else if (adType === 'minigame_double') {
+          energyReward = 30;
+          satsReward = 3;
+        } else if (adType === 'satoshis_reward') {
+          energyReward = 10;
+          satsReward = 15;
+        }
+
+        const newEnergy = profile.energy + energyReward;
+        const newSats = (profile.satoshis_balance || 0) + satsReward;
+
+        await supabase.from('ad_reward_claims').insert({
+          profile_id: profile.id,
+          ad_type: adType,
+        });
+
+        await supabase.from('satoshis_ledger').insert({
+          profile_id: profile.id,
+          amount_sats: satsReward,
+          source: 'ad_reward',
+          reference: adType,
+        });
+
+        await supabase
+          .from('profiles')
+          .update({ energy: newEnergy, satoshis_balance: newSats })
+          .eq('id', profile.id);
+
+        const adAchievements = await checkAchievements(supabase, profile.id);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            energyReward,
+            satsReward,
+            energy: newEnergy,
+            satoshisBalance: newSats,
+            newAchievements: adAchievements,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get-satoshis-balance': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, satoshis_balance')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: ledger } = await supabase
+          .from('satoshis_ledger')
+          .select('amount_sats, source, reference, created_at')
+          .eq('profile_id', profile.id)
+          .order('created_at', { ascending: false })
+          .limit(20);
+
+        return new Response(
+          JSON.stringify({ balance: profile.satoshis_balance || 0, ledger: ledger || [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'withdraw-satoshis': {
+        const body = await req.json();
+        const { lightningAddress, amount } = body;
+
+        if (!lightningAddress || typeof amount !== 'number' || amount < 100) {
+          return new Response(
+            JSON.stringify({ error: 'Minimum withdrawal is 100 sats' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, satoshis_balance')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if ((profile.satoshis_balance || 0) < amount) {
+          return new Response(
+            JSON.stringify({ error: 'Insufficient satoshis balance' }),
+            { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Deduct balance and record withdrawal (pending manual/payout processing)
+        const newBalance = (profile.satoshis_balance || 0) - amount;
+
+        await supabase.from('satoshis_ledger').insert({
+          profile_id: profile.id,
+          amount_sats: -amount,
+          source: 'withdrawal',
+          reference: lightningAddress,
+        });
+
+        await supabase
+          .from('profiles')
+          .update({ satoshis_balance: newBalance })
+          .eq('id', profile.id);
+
+        return new Response(
+          JSON.stringify({ success: true, balance: newBalance, requestedAmount: amount, lightningAddress }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Not found' }),

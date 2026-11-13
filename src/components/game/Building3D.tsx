@@ -205,11 +205,39 @@ export const Building3D = ({ type, level, position }: Building3DProps) => {
     if (groupRef.current) groupRef.current.lookAt(lookAt);
   });
 
-  if (level <= 0 && type !== 'core_mina') return null;
+  const isGhost = level <= 0 && type !== 'core_mina';
 
   return (
     <group ref={groupRef} position={position}>
-      <Model level={level} />
+      {isGhost ? (
+        <group scale={0.7}>
+          <mesh>
+            <icosahedronGeometry args={[0.18, 0]} />
+            <meshStandardMaterial
+              color="#1a2a1a"
+              transparent
+              opacity={0.4}
+              emissive={ENERGY_GREEN}
+              emissiveIntensity={0.15}
+              metalness={0.3}
+              roughness={0.8}
+            />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.3, 0.015, 6, 24]} />
+            <meshBasicMaterial
+              color={ENERGY_GREEN}
+              transparent
+              opacity={0.25}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+        </group>
+      ) : (
+        <Model level={Math.max(1, level)} />
+      )}
     </group>
   );
 };
