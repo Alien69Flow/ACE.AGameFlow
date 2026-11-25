@@ -123,7 +123,22 @@ const Index = () => {
     submitMinigameScore,
     minigameScores,
     fetchMinigameScores,
+    gameResources,
+    gamesHubData,
+    fetchGameResources,
+    collectProduction,
+    fetchGamesHub,
+    buyGameBuilding,
   } = useGameState();
+  const [gameBuildings, setGameBuildings] = useState<import('@/hooks/useGameState').BuildingInfo[]>([]);
+
+  const fetchGameBuildings = useCallback(async () => {
+    if (isGuest) return;
+    const data = await fetchGameResources();
+    if (data?.buildings) {
+      setGameBuildings(data.buildings);
+    }
+  }, [fetchGameResources, isGuest]);
   const { isMuted, toggleMute, playTapSound, playClaimSound, playNavigateSound } = useAudio();
 
   const [currentScreen, setCurrentScreen] = useState<Screen>('planet');
@@ -425,6 +440,15 @@ const Index = () => {
             onSubmitScore={isGuest ? guestSubmitScore : submitMinigameScore}
             minigameScores={minigameScores}
             onFetchScores={fetchMinigameScores}
+            gameResources={isGuest ? null : gameResources}
+            gamesHubData={isGuest ? null : gamesHubData}
+            onFetchGameResources={fetchGameResources}
+            onFetchGamesHub={fetchGamesHub}
+            onCollectProduction={collectProduction}
+            buildings={gameBuildings}
+            onBuyBuilding={buyGameBuilding}
+            onFetchBuildings={fetchGameBuildings}
+            energy={gameState.energy}
           />
         )}
       </AnimatePresence>
