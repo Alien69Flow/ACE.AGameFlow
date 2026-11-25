@@ -1,5 +1,31 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.93.3";
-import { ARENA_DAILY_BATTLE_LIMIT, BUILDING_CATALOG, BUILDING_SLOT_IDS, CARD_HANGAR_SLOT_ID, CENTRAL_ENERGY_SLOT_ID, COLOSSEUM_SLOT_ID, LABORATORY_SLOT_ID, type BuildingSlotId, minigameBonusMultiplier, pickBotDeck, regenBonusMultiplier, simulateBattle, starterDeck } from "./buildings.ts";
+import {
+  ARENA_DAILY_BATTLE_LIMIT,
+  BUILDING_CATALOG,
+  BUILDING_PREREQUISITES,
+  BUILDING_SLOT_IDS,
+  CARD_HANGAR_SLOT_ID,
+  CENTRAL_ENERGY_SLOT_ID,
+  COLOSSEUM_SLOT_ID,
+  DEFENSE_CENTER_SLOT_ID,
+  GAME_CATALOG,
+  LABORATORY_SLOT_ID,
+  ORBITAL_STATION_SLOT_ID,
+  REFINERY_SLOT_ID,
+  SPACE_HANGAR_SLOT_ID,
+  SURFACE_MINE_SLOT_ID,
+  UNDERGROUND_MINE_SLOT_ID,
+  dataProductionRate,
+  type BuildingSlotId,
+  type GameDefinition,
+  mineralProductionRate,
+  minigameBonusMultiplier,
+  mineEnergyProductionRate,
+  pickBotDeck,
+  regenBonusMultiplier,
+  simulateBattle,
+  starterDeck,
+} from "./buildings.ts";
 
 const ALLOWED_ORIGINS = [
   'https://ljasfllzyeoxvfozzple.supabase.co',
@@ -202,13 +228,15 @@ const UPGRADE_CATALOG: Record<string, { values: number[]; costs: number[]; maxLe
   orbital_station:   { values: [0, 50, 100, 200, 500],  costs: [1000, 4000, 15000, 40000, 100000], maxLevel: 5 },
 };
 
-// Minigame catalog: reward per point scored (capped)
-const MINIGAME_CATALOG: Record<string, { rewardPerPoint: number; maxReward: number; dailyPlayLimit: number }> = {
-  memory_match:   { rewardPerPoint: 2,  maxReward: 200, dailyPlayLimit: 5 },
-  reaction_rush:  { rewardPerPoint: 3,  maxReward: 300, dailyPlayLimit: 5 },
-  asteroid_blitz: { rewardPerPoint: 1,  maxReward: 150, dailyPlayLimit: 5 },
-  core_drill:     { rewardPerPoint: 2,  maxReward: 250, dailyPlayLimit: 5 },
-};
+// Minigame catalog derived from the shared GAME_CATALOG (server-authoritative)
+const MINIGAME_CATALOG: Record<string, { rewardPerPoint: number; maxReward: number; dailyPlayLimit: number; rewardResource: string }> = Object.fromEntries(
+  GAME_CATALOG.map(g => [g.id, {
+    rewardPerPoint: g.rewardPerPoint,
+    maxReward: g.maxReward,
+    dailyPlayLimit: g.dailyPlayLimit,
+    rewardResource: g.rewardResource,
+  }])
+);
 
 // Energy pack catalog (must match frontend)
 const DAO_WALLET_ADDRESS = "UQDpx7rfaaO-P6-Lnu0IrR1kWEo2Geo1VMx1UYy0IyyCJJ20";
@@ -2468,6 +2496,309 @@ Deno.serve(async (req) => {
 
         return new Response(
           JSON.stringify({ success: true, balance: newBalance, requestedAmount: amount, lightningAddress }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // ---- NEW: GAMES HUB ENDPOINTS ----
+
+      case 'get-game-resources': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Ensure game_resources row exists
+        const { data: resources } = await supabase
+          .from('game_resources')
+          .select('minerals, data, influence, last_production_at')
+          .eq('profile_id', profile.id)
+          .maybeSingle();
+
+        if (!resources) {
+          await supabase.from('game_resources').insert({ profile_id: profile.id });
+        }
+
+        // Get all buildings for the player
+        const { data: buildings } = await supabase
+          .from('buildings')
+          .select('slot_id, level')
+          .eq('profile_id', profile.id);
+
+        const buildingMap = new Map((buildings || []).map((b: { slot_id: number; level: number }) => [b.slot_id, b.level]));
+
+        // Calculate production rates based on buildings
+        const surfaceMineLevel = buildingMap.get(SURFACE_MINE_SLOT_ID) ?? 0;
+        const undergroundMineLevel = buildingMap.get(UNDERGROUND_MINE_SLOT_ID) ?? 0;
+        const refineryLevel = buildingMap.get(REFINERY_SLOT_ID) ?? 0;
+        const labLevel = buildingMap.get(LABORATORY_SLOT_ID) ?? 0;
+
+        const energyRate = mineEnergyProductionRate(surfaceMineLevel);
+        const mineralsRate = mineralProductionRate(surfaceMineLevel) + mineralProductionRate(undergroundMineLevel) * 2;
+        const dataRate = dataProductionRate(labLevel) + Math.floor(refineryLevel * 5);
+
+        // Get minigame scores
+        const { data: scores } = await supabase
+          .from('minigame_scores')
+          .select('game_id, high_score, total_plays, last_played_at')
+          .eq('profile_id', profile.id);
+
+        // Build buildings list with full catalog
+        const buildingsList = BUILDING_SLOT_IDS.map(slotId => {
+          const meta = BUILDING_CATALOG[slotId];
+          const level = buildingMap.get(slotId) ?? 0;
+          const maxLevel = meta.costs.length;
+          const prereq = BUILDING_PREREQUISITES[slotId];
+          let unlocked = true;
+          if (prereq) {
+            unlocked = (buildingMap.get(prereq.slot) ?? 0) >= prereq.level;
+          }
+          return {
+            slotId,
+            type: meta.type,
+            name: meta.name,
+            icon: meta.icon,
+            category: meta.category,
+            level,
+            maxLevel,
+            nextCost: level < maxLevel ? meta.costs[level] : null,
+            unlocked,
+            prereqSlot: prereq?.slot ?? null,
+            prereqLevel: prereq?.level ?? null,
+          };
+        });
+
+        return new Response(
+          JSON.stringify({
+            energy: profile.energy,
+            minerals: resources?.minerals ?? 0,
+            data: resources?.data ?? 0,
+            influence: resources?.influence ?? 0,
+            productionRates: { energy: energyRate, minerals: mineralsRate, data: dataRate },
+            buildings: buildingsList,
+            minigameScores: scores || [],
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'collect-production': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get or create resources
+        let { data: resources } = await supabase
+          .from('game_resources')
+          .select('id, minerals, data, influence, last_production_at')
+          .eq('profile_id', profile.id)
+          .maybeSingle();
+
+        if (!resources) {
+          const { data: newRes } = await supabase
+            .from('game_resources')
+            .insert({ profile_id: profile.id })
+            .select('id, minerals, data, influence, last_production_at')
+            .single();
+          resources = newRes;
+        }
+
+        // Get buildings for rate calculation
+        const { data: buildings } = await supabase
+          .from('buildings')
+          .select('slot_id, level')
+          .eq('profile_id', profile.id);
+
+        const buildingMap = new Map((buildings || []).map((b: { slot_id: number; level: number }) => [b.slot_id, b.level]));
+        const surfaceMineLevel = buildingMap.get(SURFACE_MINE_SLOT_ID) ?? 0;
+        const undergroundMineLevel = buildingMap.get(UNDERGROUND_MINE_SLOT_ID) ?? 0;
+        const refineryLevel = buildingMap.get(REFINERY_SLOT_ID) ?? 0;
+        const labLevel = buildingMap.get(LABORATORY_SLOT_ID) ?? 0;
+
+        const energyRate = mineEnergyProductionRate(surfaceMineLevel);
+        const mineralsRate = mineralProductionRate(surfaceMineLevel) + mineralProductionRate(undergroundMineLevel) * 2;
+        const dataRate = dataProductionRate(labLevel) + Math.floor(refineryLevel * 5);
+
+        // Calculate elapsed hours (cap at 8 hours)
+        const lastProduction = new Date(resources.last_production_at);
+        const now = new Date();
+        const hoursElapsed = Math.min(Math.floor((now.getTime() - lastProduction.getTime()) / (1000 * 60 * 60)), 8);
+
+        const energyGain = Math.floor(energyRate * hoursElapsed);
+        const mineralsGain = Math.floor(mineralsRate * hoursElapsed);
+        const dataGain = Math.floor(dataRate * hoursElapsed);
+
+        const newEnergy = profile.energy + energyGain;
+        const newMinerals = resources.minerals + mineralsGain;
+        const newData = resources.data + dataGain;
+
+        // Update energy on profile
+        if (energyGain > 0) {
+          await supabase.from('profiles').update({ energy: newEnergy }).eq('id', profile.id);
+        }
+
+        // Update resources
+        await supabase
+          .from('game_resources')
+          .update({
+            minerals: newMinerals,
+            data: newData,
+            last_production_at: now.toISOString(),
+            updated_at: now.toISOString(),
+          })
+          .eq('id', resources.id);
+
+        // Record transactions
+        if (energyGain > 0) {
+          await supabase.from('resource_transactions').insert({
+            profile_id: profile.id,
+            resource_type: 'energy',
+            amount: energyGain,
+            source: 'production',
+          });
+        }
+        if (mineralsGain > 0) {
+          await supabase.from('resource_transactions').insert({
+            profile_id: profile.id,
+            resource_type: 'minerals',
+            amount: mineralsGain,
+            source: 'production',
+          });
+        }
+        if (dataGain > 0) {
+          await supabase.from('resource_transactions').insert({
+            profile_id: profile.id,
+            resource_type: 'data',
+            amount: dataGain,
+            source: 'production',
+          });
+        }
+
+        // Update production snapshot
+        await supabase.from('production_snapshots').upsert({
+          profile_id: profile.id,
+          energy_rate: energyRate,
+          minerals_rate: mineralsRate,
+          data_rate: dataRate,
+          last_calculated_at: now.toISOString(),
+          updated_at: now.toISOString(),
+        }, { onConflict: 'profile_id' });
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            energyGain,
+            mineralsGain,
+            dataGain,
+            energy: newEnergy,
+            minerals: newMinerals,
+            data: newData,
+            influence: resources.influence,
+            hoursElapsed,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get-games-hub': {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, energy')
+          .eq('telegram_id', telegramUserId)
+          .single();
+
+        if (!profile) {
+          return new Response(
+            JSON.stringify({ error: 'Profile not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: buildings } = await supabase
+          .from('buildings')
+          .select('slot_id, level')
+          .eq('profile_id', profile.id);
+
+        const buildingMap = new Map((buildings || []).map((b: { slot_id: number; level: number }) => [b.slot_id, b.level]));
+        const { data: scores } = await supabase
+          .from('minigame_scores')
+          .select('game_id, high_score, total_plays, last_played_at')
+          .eq('profile_id', profile.id);
+
+        const scoreMap = new Map((scores || []).map((s: { game_id: string; high_score: number; total_plays: number; last_played_at: string }) => [s.game_id, s]));
+
+        const now = new Date();
+        const games = GAME_CATALOG.map(g => {
+          const scoreEntry = scoreMap.get(g.id);
+          let playsToday = 0;
+          if (scoreEntry) {
+            const lastPlay = new Date(scoreEntry.last_played_at);
+            if (lastPlay.toDateString() === now.toDateString()) {
+              playsToday = scoreEntry.total_plays;
+            }
+          }
+          let unlocked = true;
+          if (g.unlockBuilding) {
+            unlocked = (buildingMap.get(g.unlockBuilding.slot) ?? 0) >= g.unlockBuilding.level;
+          }
+          let boostMultiplier = 1;
+          if (g.buildingBoost) {
+            const level = buildingMap.get(g.buildingBoost.slot) ?? 0;
+            boostMultiplier = 1 + g.buildingBoost.boostPerLevel * level;
+          }
+          return {
+            id: g.id,
+            category: g.category,
+            label: g.label,
+            description: g.description,
+            icon: g.icon,
+            difficulty: g.difficulty,
+            rewardResource: g.rewardResource,
+            unlocked,
+            playsToday,
+            dailyPlayLimit: g.dailyPlayLimit,
+            highScore: scoreEntry?.high_score ?? 0,
+            boostMultiplier: Math.round(boostMultiplier * 100) / 100,
+          };
+        });
+
+        // Daily goals: play 3 minigames, collect production, upgrade a building
+        const { count: todayScores } = await supabase
+          .from('minigame_scores')
+          .select('id', { count: 'exact', head: true })
+          .eq('profile_id', profile.id)
+          .gte('last_played_at', new Date(now.toDateString()).toISOString());
+
+        const totalPlaysToday = games.reduce((sum, g) => sum + g.playsToday, 0);
+        const dailyGoals = [
+          { id: 'play_3_games', label: 'Juega 3 minijuegos', target: 3, progress: Math.min(totalPlaysToday, 3), reward: 'energy' },
+          { id: 'play_any_strategy', label: 'Juega un juego de estrategia', target: 1, progress: games.filter(g => g.category === 'strategy' && g.playsToday > 0).length, reward: 'data' },
+          { id: 'play_any_mining', label: 'Juega un juego de minería', target: 1, progress: games.filter(g => g.category === 'mining' && g.playsToday > 0).length, reward: 'minerals' },
+        ];
+
+        return new Response(
+          JSON.stringify({
+            games,
+            dailyGoals,
+            energy: profile.energy,
+          }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
