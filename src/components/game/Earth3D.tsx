@@ -1,6 +1,6 @@
 import { Component, Suspense, useRef, useState, useEffect, type ReactNode } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Sphere, Stars, OrbitControls, useTexture } from '@react-three/drei';
+import { Sphere, Stars, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Building3D, type BuildingType } from './Building3D';
 import { isWebGLAvailable } from './WebGLDetector';
