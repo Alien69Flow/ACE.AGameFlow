@@ -2,6 +2,7 @@ import { useRef, useState, useMemo } from 'react';
 import { Canvas, useFrame, type ThreeEvent } from '@react-three/fiber';
 import { Sparkles } from '@react-three/drei';
 import * as THREE from 'three';
+import { isWebGLAvailable } from './WebGLDetector';
 
 const ENERGY_GREEN = '#5cff2a';
 const ENERGY_AMBER = '#ffb627';
@@ -328,21 +329,51 @@ function DustParticles({ active }: { active: boolean }) {
   );
 }
 
-export const CoreMineScene = ({ onTap, canTap }: CoreMineSceneProps) => (
-  <Canvas
-    dpr={[1, 2]}
-    camera={{ position: [0, 0.5, 4.5], fov: 42 }}
-    gl={{ antialias: true, alpha: true }}
-    style={{ background: 'transparent' }}
-  >
-    <ambientLight intensity={0.4} />
-    <directionalLight position={[3, 5, 4]} intensity={1.5} color="#fff4e0" />
-    <pointLight position={[-2, 1, 3]} intensity={8} color={ENERGY_GREEN} distance={12} />
-    <pointLight position={[2, -1, -2]} intensity={4} color={ENERGY_AMBER} distance={8} />
-    <pointLight position={[0, 2, 0]} intensity={3} color="#ffffff" distance={6} />
+export const CoreMineScene = ({ onTap, canTap }: CoreMineSceneProps) => {
+  const [webglOk] = useState(() => isWebGLAvailable());
 
-    <Sparkles count={60} scale={[4, 4, 2]} size={3} speed={0.3} color={ENERGY_GREEN} />
-    <DustParticles active={canTap} />
-    <DrillRig onTap={onTap} canTap={canTap} />
-  </Canvas>
-);
+  if (!webglOk) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <button
+          onClick={() => { if (canTap) onTap(); }}
+          disabled={!canTap}
+          className="w-40 h-40 rounded-full border-4 border-[#39FF14] flex items-center justify-center transition-all active:scale-95 disabled:opacity-40"
+          style={{
+            background: 'radial-gradient(circle, rgba(92,255,42,0.15) 0%, rgba(45,55,72,0.8) 70%)',
+            boxShadow: canTap ? '0 0 30px rgba(92,255,42,0.4)' : 'none',
+          }}
+        >
+          <div className="text-center">
+            <div className="text-3xl mb-1">⛏️</div>
+            <div className="text-[10px] text-[#39FF14] font-bold" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+              {canTap ? 'TAP' : 'SIN STAMINA'}
+            </div>
+          </div>
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <Canvas
+      dpr={[1, 1.5]}
+      camera={{ position: [0, 0.5, 4.5], fov: 42 }}
+      gl={{ antialias: false, alpha: true, powerPreference: 'high-performance' }}
+      style={{ background: 'transparent' }}
+      onCreated={({ gl }) => {
+        gl.setClearColor(0x000000, 0);
+      }}
+    >
+      <ambientLight intensity={0.4} />
+      <directionalLight position={[3, 5, 4]} intensity={1.5} color="#fff4e0" />
+      <pointLight position={[-2, 1, 3]} intensity={8} color={ENERGY_GREEN} distance={12} />
+      <pointLight position={[2, -1, -2]} intensity={4} color={ENERGY_AMBER} distance={8} />
+      <pointLight position={[0, 2, 0]} intensity={3} color="#ffffff" distance={6} />
+
+      <Sparkles count={60} scale={[4, 4, 2]} size={3} speed={0.3} color={ENERGY_GREEN} />
+      <DustParticles active={canTap} />
+      <DrillRig onTap={onTap} canTap={canTap} />
+    </Canvas>
+  );
+};
