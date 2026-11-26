@@ -2,7 +2,11 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
-export type BuildingType = 'core_mina' | 'central_energy' | 'laboratory' | 'card_hangar' | 'arena' | 'coliseum';
+export type BuildingType =
+  | 'core_mina' | 'central_energy' | 'laboratory' | 'card_hangar'
+  | 'arena' | 'coliseum'
+  | 'surface_mine' | 'underground_mine' | 'refinery'
+  | 'defense_center' | 'space_hangar' | 'orbital_station';
 
 interface Building3DProps {
   type: BuildingType;
@@ -187,6 +191,200 @@ function ColiseumModel({ level }: { level: number }) {
   );
 }
 
+function SurfaceMineModel({ level }: { level: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const drillRef = useRef<THREE.Mesh>(null);
+  useFrame((state, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.25;
+    if (drillRef.current) drillRef.current.rotation.z += delta * 6;
+  });
+  const scale = 1 + level * 0.13;
+  return (
+    <group ref={ref} scale={scale}>
+      <mesh position={[0, -0.12, 0]}>
+        <cylinderGeometry args={[0.28, 0.32, 0.16, 8]} />
+        <meshStandardMaterial color="#3a2a1e" metalness={0.5} roughness={0.6} />
+      </mesh>
+      <mesh position={[0, 0.05, 0]}>
+        <cylinderGeometry args={[0.14, 0.18, 0.22, 8]} />
+        <meshStandardMaterial color="#4a3a2e" metalness={0.4} roughness={0.5} />
+      </mesh>
+      <mesh ref={drillRef} position={[0, 0.22, 0]}>
+        <coneGeometry args={[0.1, 0.18, 6]} />
+        <meshStandardMaterial color="#8a8a8a" metalness={0.9} roughness={0.1} emissive={ENERGY_AMBER} emissiveIntensity={0.2} />
+      </mesh>
+      <mesh position={[0, 0.32, 0]}>
+        <sphereGeometry args={[0.05, 12, 12]} />
+        <meshBasicMaterial color={ENERGY_AMBER} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function UndergroundMineModel({ level }: { level: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const ringRef = useRef<THREE.Mesh>(null);
+  useFrame((state, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.2;
+    if (ringRef.current) ringRef.current.rotation.x += delta * 1.2;
+  });
+  const scale = 1 + level * 0.13;
+  return (
+    <group ref={ref} scale={scale}>
+      <mesh position={[0, -0.1, 0]}>
+        <torusGeometry args={[0.25, 0.08, 8, 16]} />
+        <meshStandardMaterial color="#2a1e1a" metalness={0.6} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0.05, 0]}>
+        <cylinderGeometry args={[0.12, 0.16, 0.2, 8]} />
+        <meshStandardMaterial color="#3a2a2e" metalness={0.5} roughness={0.5} emissive={ENERGY_AMBER} emissiveIntensity={0.15} />
+      </mesh>
+      <mesh ref={ringRef} position={[0, 0.15, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.18, 0.02, 6, 20]} />
+        <meshBasicMaterial color={ENERGY_AMBER} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 0.15, 0]}>
+        <sphereGeometry args={[0.06, 12, 12]} />
+        <meshBasicMaterial color={ENERGY_AMBER} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function RefineryModel({ level }: { level: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const smokeRef = useRef<THREE.Mesh>(null);
+  useFrame((state, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.15;
+    if (smokeRef.current) {
+      const t = state.clock.elapsedTime;
+      smokeRef.current.position.y = 0.35 + Math.sin(t * 2) * 0.05;
+      (smokeRef.current.material as THREE.MeshBasicMaterial).opacity = 0.3 + Math.sin(t * 3) * 0.1;
+    }
+  });
+  const scale = 1 + level * 0.12;
+  return (
+    <group ref={ref} scale={scale}>
+      <mesh position={[0, -0.12, 0]}>
+        <boxGeometry args={[0.4, 0.18, 0.3]} />
+        <meshStandardMaterial color="#2a2a3e" metalness={0.7} roughness={0.3} />
+      </mesh>
+      <mesh position={[-0.1, 0.1, 0]}>
+        <cylinderGeometry args={[0.06, 0.06, 0.25, 8]} />
+        <meshStandardMaterial color="#3a3a4e" metalness={0.8} roughness={0.2} emissive="#4fa8ff" emissiveIntensity={0.2} />
+      </mesh>
+      <mesh position={[0.1, 0.1, 0]}>
+        <cylinderGeometry args={[0.06, 0.06, 0.25, 8]} />
+        <meshStandardMaterial color="#3a3a4e" metalness={0.8} roughness={0.2} emissive="#4fa8ff" emissiveIntensity={0.2} />
+      </mesh>
+      <mesh ref={smokeRef} position={[-0.1, 0.35, 0]}>
+        <sphereGeometry args={[0.05, 8, 8]} />
+        <meshBasicMaterial color="#6a7a8e" transparent opacity={0.3} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function DefenseCenterModel({ level }: { level: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const dishRef = useRef<THREE.Mesh>(null);
+  useFrame((state, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.3;
+    if (dishRef.current) dishRef.current.rotation.z = Math.sin(state.clock.elapsedTime) * 0.3;
+  });
+  const scale = 1 + level * 0.12;
+  return (
+    <group ref={ref} scale={scale}>
+      <mesh position={[0, -0.12, 0]}>
+        <cylinderGeometry args={[0.22, 0.26, 0.16, 8]} />
+        <meshStandardMaterial color="#1e2a3a" metalness={0.7} roughness={0.3} />
+      </mesh>
+      <mesh position={[0, 0.05, 0]}>
+        <cylinderGeometry args={[0.05, 0.08, 0.2, 6]} />
+        <meshStandardMaterial color="#3a4a5a" metalness={0.8} roughness={0.2} />
+      </mesh>
+      <mesh ref={dishRef} position={[0, 0.18, 0]} rotation={[0.3, 0, 0]}>
+        <sphereGeometry args={[0.18, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2.5]} />
+        <meshStandardMaterial color="#4a5a6a" metalness={0.6} roughness={0.3} emissive="#4fa8ff" emissiveIntensity={0.15} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 0.22, 0]}>
+        <sphereGeometry args={[0.04, 8, 8]} />
+        <meshBasicMaterial color="#4fa8ff" toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function SpaceHangarModel({ level }: { level: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const shipRef = useRef<THREE.Mesh>(null);
+  useFrame((state, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.15;
+    if (shipRef.current) {
+      shipRef.current.position.y = 0.3 + Math.sin(state.clock.elapsedTime * 2) * 0.08;
+    }
+  });
+  const scale = 1 + level * 0.14;
+  return (
+    <group ref={ref} scale={scale}>
+      <mesh position={[0, -0.12, 0]}>
+        <boxGeometry args={[0.42, 0.14, 0.32]} />
+        <meshStandardMaterial color="#2a1e3a" metalness={0.6} roughness={0.35} />
+      </mesh>
+      <mesh position={[0, 0.04, 0]} rotation={[0, 0, 0]}>
+        <coneGeometry args={[0.16, 0.18, 6]} />
+        <meshStandardMaterial color="#3a2a4a" metalness={0.7} roughness={0.2} emissive="#b347d9" emissiveIntensity={0.2} />
+      </mesh>
+      <mesh ref={shipRef} position={[0, 0.3, 0]}>
+        <coneGeometry args={[0.08, 0.16, 4]} />
+        <meshStandardMaterial color="#b347d9" metalness={0.5} roughness={0.3} emissive="#b347d9" emissiveIntensity={0.4} />
+      </mesh>
+    </group>
+  );
+}
+
+function OrbitalStationModel({ level }: { level: number }) {
+  const ref = useRef<THREE.Group>(null);
+  const panelRefs = useRef<(THREE.Mesh | null)[]>([]);
+  useFrame((state, delta) => {
+    if (ref.current) ref.current.rotation.y += delta * 0.1;
+    panelRefs.current.forEach((p) => {
+      if (p) p.rotation.y += delta * 0.5;
+    });
+  });
+  const scale = 1 + level * 0.15;
+  return (
+    <group ref={ref} scale={scale}>
+      <mesh position={[0, -0.05, 0]}>
+        <cylinderGeometry args={[0.1, 0.1, 0.08, 12]} />
+        <meshStandardMaterial color="#2a3a4e" metalness={0.8} roughness={0.2} />
+      </mesh>
+      <mesh position={[0, 0.02, 0]}>
+        <torusGeometry args={[0.22, 0.03, 8, 24]} />
+        <meshStandardMaterial color="#4a5a6e" metalness={0.7} roughness={0.25} emissive="#4fa8ff" emissiveIntensity={0.2} />
+      </mesh>
+      {[0, 1, 2, 3].map((i) => {
+        const a = (i / 4) * Math.PI * 2;
+        return (
+          <mesh
+            key={`panel-${i}`}
+            ref={(el) => { panelRefs.current[i] = el; }}
+            position={[Math.cos(a) * 0.22, 0.02, Math.sin(a) * 0.22]}
+            rotation={[0, a, 0]}
+          >
+            <boxGeometry args={[0.18, 0.01, 0.1]} />
+            <meshStandardMaterial color="#1a3a5a" metalness={0.6} roughness={0.3} emissive="#4fa8ff" emissiveIntensity={0.3} side={THREE.DoubleSide} />
+          </mesh>
+        );
+      })}
+      <mesh position={[0, 0.12, 0]}>
+        <sphereGeometry args={[0.06, 12, 12]} />
+        <meshBasicMaterial color="#4fa8ff" toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
 const MODEL_MAP: Record<BuildingType, (props: { level: number }) => React.JSX.Element> = {
   core_mina: CoreMinaModel,
   central_energy: CentralEnergyModel,
@@ -194,6 +392,12 @@ const MODEL_MAP: Record<BuildingType, (props: { level: number }) => React.JSX.El
   card_hangar: CardHangarModel,
   arena: ArenaModel,
   coliseum: ColiseumModel,
+  surface_mine: SurfaceMineModel,
+  underground_mine: UndergroundMineModel,
+  refinery: RefineryModel,
+  defense_center: DefenseCenterModel,
+  space_hangar: SpaceHangarModel,
+  orbital_station: OrbitalStationModel,
 };
 
 export const Building3D = ({ type, level, position }: Building3DProps) => {

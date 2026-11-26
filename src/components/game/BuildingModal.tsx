@@ -15,15 +15,20 @@ export const BuildingModal = ({ building, energy, buying, onBuy, onOpenArena, on
   const isMaxed = building.level >= building.maxLevel;
   const cost = building.nextCost;
   const canAfford = cost !== null && energy >= cost;
-  const benefit = building.type === 'central_energy'
-    ? '+10% de regeneración de stamina por nivel'
-    : building.type === 'laboratory'
-      ? '+10% de recompensa en minijuegos por nivel'
-      : building.type === 'card_hangar'
-        ? 'Añade una carta especial al mazo por nivel'
-        : building.type === 'arena'
-          ? 'Desbloquea batallas diarias contra otros mazos'
-          : '+25% de recompensa por victoria en Arena por nivel';
+  const BUILDING_BENEFITS: Record<string, string> = {
+    central_energy: '+10% de regeneración de stamina por nivel',
+    laboratory: '+10% de recompensa en minijuegos por nivel',
+    card_hangar: 'Añade una carta especial al mazo por nivel',
+    arena: 'Desbloquea batallas diarias contra otros mazos',
+    coliseum: '+25% de recompensa por victoria en Arena por nivel',
+    surface_mine: 'Produce energía pasiva. +30/h por nivel',
+    underground_mine: 'Produce el doble de minerales que la mina terrestre',
+    refinery: 'Produce datos. +5/h por nivel',
+    defense_center: 'Desbloquea Tower Defense en los minijuegos',
+    space_hangar: 'Desbloquea Asteroid Blitz y naves espaciales',
+    orbital_station: 'Estación avanzada de producción en órbita',
+  };
+  const benefit = BUILDING_BENEFITS[building.type] ?? 'Edificio especial';
 
   return (
     <motion.div

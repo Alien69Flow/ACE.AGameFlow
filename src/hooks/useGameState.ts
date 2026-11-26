@@ -755,6 +755,106 @@ export const useGameState = () => {
     }
   }, [initData, webSessionToken]);
 
+  // ==================== Game Resources & Extended Buildings ====================
+
+  interface GameResourceData {
+    energy: number;
+    minerals: number;
+    data: number;
+    influence: number;
+    productionRates: { energy: number; minerals: number; data: number };
+    buildings: BuildingInfo[];
+    minigameScores: { game_id: string; high_score: number; total_plays: number; last_played_at: string }[];
+  }
+
+  const [gameResources, setGameResources] = useState<GameResourceData | null>(null);
+
+  const fetchGameResources = useCallback(async (): Promise<GameResourceData | null> => {
+    if (!initData && !webSessionToken) return null;
+    try {
+      const data = await callGameApi('get-game-resources', initData || '', undefined, webSessionToken);
+      const resourceData: GameResourceData = {
+        energy: data.energy ?? 0,
+        minerals: data.minerals ?? 0,
+        data: data.data ?? 0,
+        influence: data.influence ?? 0,
+        productionRates: data.productionRates ?? { energy: 0, minerals: 0, data: 0 },
+        buildings: data.buildings ?? [],
+        minigameScores: data.minigameScores ?? [],
+      };
+      setGameResources(resourceData);
+      setGameState(prev => ({ ...prev, energy: data.energy ?? prev.energy }));
+      return resourceData;
+    } catch {
+      return null;
+    }
+  }, [initData, webSessionToken]);
+
+  const buyGameBuilding = useCallback(async (slotId: number): Promise<{ success: boolean } | null> => {
+    if (!initData && !webSessionToken) return null;
+    try {
+      const data = await callGameApi('buy-building', initData || '', { slotId }, webSessionToken);
+      if (data.success) {
+        setGameState(prev => ({ ...prev, energy: data.energy }));
+        return { success: true };
+      }
+      return { success: false };
+    } catch {
+      return null;
+    }
+  }, [initData, webSessionToken]);
+
+  interface GamesHubData {
+    games: {
+      id: string; category: string; label: string; description: string; icon: string;
+      difficulty: string; rewardResource: string; unlocked: boolean;
+      playsToday: number; dailyPlayLimit: number; highScore: number; boostMultiplier: number;
+    }[];
+    dailyGoals: { id: string; label: string; target: number; progress: number; reward: string }[];
+    energy: number;
+  }
+
+  const [gamesHubData, setGamesHubData] = useState<GamesHubData | null>(null);
+
+  const fetchGamesHub = useCallback(async (): Promise<GamesHubData | null> => {
+    if (!initData && !webSessionToken) return null;
+    try {
+      const data = await callGameApi('get-games-hub', initData || '', undefined, webSessionToken);
+      const hubData: GamesHubData = {
+        games: data.games ?? [],
+        dailyGoals: data.dailyGoals ?? [],
+        energy: data.energy ?? 0,
+      };
+      setGamesHubData(hubData);
+      return hubData;
+    } catch {
+      return null;
+    }
+  }, [initData, webSessionToken]);
+
+  const collectProduction = useCallback(async (): Promise<{
+    energyGain: number; mineralsGain: number; dataGain: number;
+    energy: number; minerals: number; data: number; hoursElapsed: number;
+  } | null> => {
+    if (!initData && !webSessionToken) return null;
+    try {
+      const data = await callGameApi('collect-production', initData || '', undefined, webSessionToken);
+      if (data.success) {
+        setGameState(prev => ({ ...prev, energy: data.energy }));
+        setGameResources(prev => prev ? {
+          ...prev,
+          energy: data.energy,
+          minerals: data.minerals,
+          data: data.data,
+          influence: data.influence ?? prev.influence,
+        } : null);
+      }
+      return data;
+    } catch {
+      return null;
+    }
+  }, [initData, webSessionToken]);
+
   return {
     gameState,
     missions,
@@ -805,5 +905,11 @@ export const useGameState = () => {
     satoshisLedger,
     fetchSatoshisBalance,
     withdrawSatoshis,
+    gameResources,
+    fetchGameResources,
+    buyGameBuilding,
+    gamesHubData,
+    fetchGamesHub,
+    collectProduction,
   };
 };

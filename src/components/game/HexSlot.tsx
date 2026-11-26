@@ -7,11 +7,12 @@ interface HexSlotProps {
   name: string;
   onClick?: () => void;
   isHighlighted?: boolean;
+  radius?: number;
+  size?: number;
 }
 
-export const HexSlot = ({ index, isUnlocked, name, onClick, isHighlighted }: HexSlotProps) => {
+export const HexSlot = ({ index, isUnlocked, name, onClick, isHighlighted, radius = 172, size = 72 }: HexSlotProps) => {
   const angle = (index * 60 - 90) * (Math.PI / 180);
-  const radius = 172;
   const x = Math.cos(angle) * radius;
   const y = Math.sin(angle) * radius;
 
@@ -30,8 +31,9 @@ export const HexSlot = ({ index, isUnlocked, name, onClick, isHighlighted }: Hex
       <motion.button
         onClick={onClick}
         disabled={!onClick}
+        style={{ width: `${size}px`, height: `${size}px` }}
         className={`
-          relative w-[72px] h-[72px] flex items-center justify-center
+          relative flex items-center justify-center
           transition-all duration-300
           ${onClick
             ? 'cursor-pointer hover:scale-110' 

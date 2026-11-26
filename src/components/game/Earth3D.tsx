@@ -32,16 +32,24 @@ const SLOT_ANGLES: Record<number, number> = {
   4: 90,
   5: 150,
   6: 210,
+  7: -60,
+  8: 0,
+  9: 60,
+  10: 120,
+  11: 180,
+  12: 240,
 };
 
 const BUILDING_RADIUS = 2.18;
+const OUTER_BUILDING_RADIUS = 2.6;
 const BUILDING_HEIGHT = 0.28;
 
 function buildingPosition(slotId: number): [number, number, number] {
   const angleDeg = SLOT_ANGLES[slotId] ?? 0;
   const angle = (angleDeg * Math.PI) / 180;
-  const x = Math.cos(angle) * BUILDING_RADIUS;
-  const z = Math.sin(angle) * BUILDING_RADIUS;
+  const radius = slotId > 6 ? OUTER_BUILDING_RADIUS : BUILDING_RADIUS;
+  const x = Math.cos(angle) * radius;
+  const z = Math.sin(angle) * radius;
   return [x, BUILDING_HEIGHT, z];
 }
 
