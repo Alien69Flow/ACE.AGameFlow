@@ -9,6 +9,7 @@ import { LuckyWheel } from '@/components/game/LuckyWheel';
 import { Gift, Zap, Flame, Sparkles } from 'lucide-react';
 import { useTelegram } from '@/hooks/useTelegram';
 import type { ArenaBattleResult, BuildingInfo } from '@/hooks/useGameState';
+import { ResourceBar } from '@/components/game/ResourceBar';
 
 interface PlanetScreenProps {
   onEnterMine: () => void;
@@ -22,6 +23,22 @@ interface PlanetScreenProps {
   onFetchBuildings: () => Promise<{ buildings: BuildingInfo[]; energy: number } | null>;
   onBuyBuilding: (slotId: number) => Promise<{ success: boolean } | null>;
   onArenaBattle: () => Promise<ArenaBattleResult | null>;
+  gameResources?: {
+    minerals: number;
+    data: number;
+    influence: number;
+    productionRates: { energy: number; minerals: number; data: number };
+  } | null;
+  onCollectProduction?: () => Promise<{
+    energyGain: number; mineralsGain: number; dataGain: number;
+    energy: number; minerals: number; data: number; hoursElapsed: number;
+  } | null>;
+  onFetchGameResources?: () => Promise<void | {
+    minerals: number;
+    data: number;
+    influence: number;
+    productionRates: { energy: number; minerals: number; data: number };
+  } | null>;
 }
 
 const INNER_SLOTS = [2, 3, 4, 5, 6];
@@ -42,7 +59,7 @@ const BUILDING_PREVIEWS: Record<number, BuildingInfo> = {
   12: { slotId: 12, type: 'orbital_station', name: 'Estación Orbital', icon: '🛰️', level: 0, maxLevel: 3, nextCost: 15000 },
 };
 
-export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily, onSpinWheel, canSpinFree, energy, onFetchBuildings, onBuyBuilding, onArenaBattle }: PlanetScreenProps) => {
+export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, dailyStreak, onClaimDaily, onSpinWheel, canSpinFree, energy, onFetchBuildings, onBuyBuilding, onArenaBattle, gameResources, onCollectProduction, onFetchGameResources }: PlanetScreenProps) => {
   const { hapticFeedback } = useTelegram();
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [showDailyModal, setShowDailyModal] = useState(dailyRewardAvailable);
@@ -62,6 +79,10 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
   useEffect(() => {
     loadBuildings();
   }, [onFetchBuildings]);
+
+  useEffect(() => {
+    if (onFetchGameResources) onFetchGameResources();
+  }, [onFetchGameResources]);
 
   const handleBuy = async (slotId: number) => {
     setBuying(true);
@@ -299,6 +320,19 @@ export const PlanetScreen = ({ onEnterMine, tutorialStep, dailyRewardAvailable, 
         onSpin={onSpinWheel}
         canSpinFree={canSpinFree}
       />
+
+      {/* Resource Economy Bar */}
+      {gameResources && onCollectProduction && (
+        <div className="absolute bottom-20 left-0 right-0 z-20">
+          <ResourceBar
+            minerals={gameResources.minerals}
+            data={gameResources.data}
+            influence={gameResources.influence}
+            productionRates={gameResources.productionRates}
+            onCollect={onCollectProduction}
+          />
+        </div>
+      )}
 
       {/* Particles */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">

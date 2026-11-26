@@ -1,24 +1,34 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Gamepad2, Trophy, Zap, ArrowLeft, Brain, Target, Rocket, Pickaxe, Timer, Flame, Award } from 'lucide-react';
+import { Gamepad2, Trophy, Zap, ArrowLeft, Brain, Target, Rocket, Pickaxe, Timer, Flame, Award, Shield, Plug } from 'lucide-react';
 import { useTelegram } from '@/hooks/useTelegram';
 
 interface MinigamesScreenProps {
   onSubmitScore: (gameId: string, score: number) => Promise<{ success: boolean; reward: number; energy: number; isHighScore: boolean } | null>;
   minigameScores: { game_id: string; high_score: number; total_plays: number; last_played_at: string }[];
   onFetchScores: () => Promise<void>;
+  gamesHubData?: {
+    games: {
+      id: string; category: string; label: string; description: string; icon: string;
+      difficulty: string; rewardResource: string; unlocked: boolean;
+      playsToday: number; dailyPlayLimit: number; highScore: number; boostMultiplier: number;
+    }[];
+  } | null;
+  onFetchGamesHub?: () => Promise<void>;
 }
 
-type GameState = 'hub' | 'memory_match' | 'reaction_rush' | 'asteroid_blitz' | 'core_drill';
+type GameState = 'hub' | 'memory_match' | 'reaction_rush' | 'asteroid_blitz' | 'core_drill' | 'tower_defense' | 'tech_puzzle';
 
-const GAME_INFO: Record<string, { icon: typeof Brain; label: string; description: string; color: string; accent: string; difficulty: string }> = {
+const GAME_INFO: Record<string, { icon: typeof Brain; label: string; description: string; color: string; accent: string; difficulty: string; locked?: boolean }> = {
   memory_match:   { icon: Brain,     label: 'Memory Match',   description: 'Encuentra los pares alienígenas',     color: 'text-primary',   accent: 'from-primary/20 to-primary/5',     difficulty: 'Fácil' },
   reaction_rush:  { icon: Target,    label: 'Reaction Rush',  description: 'Toca los alienígenas lo más rápido posible', color: 'text-secondary', accent: 'from-secondary/20 to-secondary/5', difficulty: 'Medio' },
   asteroid_blitz: { icon: Rocket,    label: 'Asteroid Blitz', description: 'Destruye asteroides antes de que escapen',   color: 'text-primary',   accent: 'from-primary/20 to-primary/5',     difficulty: 'Difícil' },
   core_drill:     { icon: Pickaxe,   label: 'Core Drill',     description: 'Extrae vetas de energía antes de que se agoten', color: 'text-secondary', accent: 'from-secondary/20 to-secondary/5', difficulty: 'Medio' },
+  tower_defense:  { icon: Shield,    label: 'Tower Defense',  description: 'Defiende tu base de oleadas alienígenas',   color: 'text-blue-400',  accent: 'from-blue-500/20 to-blue-500/5',   difficulty: 'Difícil' },
+  tech_puzzle:    { icon: Plug,      label: 'Tech Puzzle',    description: 'Conecta circuitos para generar Datos',      color: 'text-cyan-400',  accent: 'from-cyan-500/20 to-cyan-500/5',   difficulty: 'Medio' },
 };
 
-export const MinigamesScreen = ({ onSubmitScore, minigameScores, onFetchScores }: MinigamesScreenProps) => {
+export const MinigamesScreen = ({ onSubmitScore, minigameScores, onFetchScores, gamesHubData, onFetchGamesHub }: MinigamesScreenProps) => {
   const { hapticFeedback } = useTelegram();
   const [gameState, setGameState] = useState<GameState>('hub');
   const [lastReward, setLastReward] = useState<number | null>(null);
@@ -27,7 +37,8 @@ export const MinigamesScreen = ({ onSubmitScore, minigameScores, onFetchScores }
 
   useEffect(() => {
     onFetchScores();
-  }, [onFetchScores]);
+    if (onFetchGamesHub) onFetchGamesHub();
+  }, [onFetchScores, onFetchGamesHub]);
 
   const handleSubmitScore = useCallback(async (gameId: string, score: number) => {
     setSubmitting(true);
@@ -40,7 +51,14 @@ export const MinigamesScreen = ({ onSubmitScore, minigameScores, onFetchScores }
     }
     setGameState('hub');
     onFetchScores();
-  }, [onSubmitScore, hapticFeedback, onFetchScores]);
+    if (onFetchGamesHub) onFetchGamesHub();
+  }, [onSubmitScore, hapticFeedback, onFetchScores, onFetchGamesHub]);
+
+  const isGameUnlocked = (id: string): boolean => {
+    if (!gamesHubData) return true;
+    const g = gamesHubData.games.find(g => g.id === id);
+    return g ? g.unlocked : true;
+  };
 
   if (gameState === 'hub') {
     return (
@@ -79,16 +97,22 @@ export const MinigamesScreen = ({ onSubmitScore, minigameScores, onFetchScores }
             {Object.entries(GAME_INFO).map(([id, info], index) => {
               const Icon = info.icon;
               const scoreEntry = minigameScores.find(s => s.game_id === id);
+              const unlocked = isGameUnlocked(id);
+              const hubGame = gamesHubData?.games.find(g => g.id === id);
+              const boost = hubGame?.boostMultiplier ?? 1;
               return (
                 <motion.button
                   key={id}
                   initial={{ x: -30, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   transition={{ delay: index * 0.08 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => { setLastReward(null); setLastHighScore(false); setGameState(id as GameState); }}
-                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border border-primary/20 bg-gradient-to-br ${info.accent} hover:border-primary/50 transition-all relative overflow-hidden`}
+                  whileHover={unlocked ? { scale: 1.02 } : {}}
+                  whileTap={unlocked ? { scale: 0.97 } : {}}
+                  disabled={!unlocked}
+                  onClick={() => { if (unlocked) { setLastReward(null); setLastHighScore(false); setGameState(id as GameState); } }}
+                  className={`w-full flex items-center gap-4 p-4 rounded-2xl border bg-gradient-to-br ${info.accent} transition-all relative overflow-hidden ${
+                    unlocked ? 'border-primary/20 hover:border-primary/50' : 'border-muted/20 opacity-50 cursor-not-allowed'
+                  }`}
                 >
                   <div className="absolute right-0 top-0 bottom-0 w-24 opacity-5">
                     <Icon className="w-full h-full" />
@@ -102,6 +126,16 @@ export const MinigamesScreen = ({ onSubmitScore, minigameScores, onFetchScores }
                       <span className="font-body text-[9px] text-muted-foreground px-1.5 py-0.5 rounded-full bg-card/60 border border-muted/20">
                         {info.difficulty}
                       </span>
+                      {boost > 1 && (
+                        <span className="font-body text-[8px] text-primary px-1.5 py-0.5 rounded-full bg-primary/10 border border-primary/30">
+                          {boost}× boost
+                        </span>
+                      )}
+                      {!unlocked && (
+                        <span className="font-body text-[8px] text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted/20">
+                          🔒 Requiere edificio
+                        </span>
+                      )}
                     </div>
                     <p className="font-body text-xs text-muted-foreground mt-0.5">{info.description}</p>
                     {scoreEntry && (
@@ -144,6 +178,8 @@ export const MinigamesScreen = ({ onSubmitScore, minigameScores, onFetchScores }
       {gameState === 'reaction_rush' && <ReactionRushGame onEnd={handleSubmitScore} />}
       {gameState === 'asteroid_blitz' && <AsteroidBlitzGame onEnd={handleSubmitScore} />}
       {gameState === 'core_drill' && <CoreDrillGame onEnd={handleSubmitScore} />}
+      {gameState === 'tower_defense' && <TowerDefenseGame onEnd={handleSubmitScore} />}
+      {gameState === 'tech_puzzle' && <TechPuzzleGame onEnd={handleSubmitScore} />}
     </motion.div>
   );
 };
@@ -445,7 +481,6 @@ function AsteroidBlitzGame({ onEnd }: { onEnd: (gameId: string, score: number) =
         ref={containerRef}
         className="relative w-full max-w-sm flex-1 rounded-2xl border-2 border-primary/20 bg-gradient-to-b from-background/80 to-card/40 overflow-hidden min-h-[400px]"
       >
-        {/* Starfield background */}
         <div className="absolute inset-0 opacity-30">
           {[...Array(30)].map((_, i) => (
             <div key={i} className="absolute w-0.5 h-0.5 rounded-full bg-white" style={{
@@ -544,7 +579,6 @@ function CoreDrillGame({ onEnd }: { onEnd: (gameId: string, score: number) => vo
         <StatChip icon={<Flame className="w-3 h-3" />} label="Combo" value={`x${combo}`} color="muted" />
       </div>
       <div className="relative w-full max-w-sm flex-1 min-h-[400px] rounded-2xl border-2 border-secondary/30 bg-gradient-to-b from-card/60 to-background/40 overflow-hidden">
-        {/* Cave texture background */}
         <div className="absolute inset-0 opacity-20">
           {[...Array(20)].map((_, i) => (
             <div key={i} className="absolute rounded-full bg-secondary/20" style={{
@@ -589,6 +623,327 @@ function CoreDrillGame({ onEnd }: { onEnd: (gameId: string, score: number) => vo
           </p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ===================== TOWER DEFENSE =====================
+function TowerDefenseGame({ onEnd }: { onEnd: (gameId: string, score: number) => void }) {
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(40);
+  const [baseHp, setBaseHp] = useState(10);
+  const [towers, setTowers] = useState<{ id: number; x: number; y: number; range: number }[]>([]);
+  const [enemies, setEnemies] = useState<{ id: number; x: number; y: number; hp: number; speed: number; pathIndex: number }[]>([]);
+  const [shots, setShots] = useState<{ id: number; x: number; y: number; tx: number; ty: number }[]>([]);
+  const [combo, setCombo] = useState(0);
+  const [placing, setPlacing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const idRef = useRef(0);
+  const enemyIdRef = useRef(0);
+  const shotIdRef = useRef(0);
+  const endedRef = useRef(false);
+  const scoreRef = useRef(0);
+  const comboRef = useRef(0);
+  const towersRef = useRef<TowerDefenseGame['towers'] extends infer T ? T : never>([]);
+  const enemiesRef = useRef<{ id: number; x: number; y: number; hp: number; speed: number; pathIndex: number }[]>([]);
+
+  useEffect(() => { scoreRef.current = score; }, [score]);
+  useEffect(() => { comboRef.current = combo; }, [combo]);
+  useEffect(() => { towersRef.current = towers; }, [towers]);
+  useEffect(() => { enemiesRef.current = enemies; }, [enemies]);
+
+  const PATH = [
+    { x: 0, y: 50 }, { x: 20, y: 50 }, { x: 20, y: 25 }, { x: 50, y: 25 },
+    { x: 50, y: 75 }, { x: 80, y: 75 }, { x: 80, y: 50 }, { x: 100, y: 50 },
+  ];
+
+  useEffect(() => {
+    if (endedRef.current) return;
+    if (timeLeft <= 0 || baseHp <= 0) {
+      endedRef.current = true;
+      onEnd('tower_defense', scoreRef.current + comboRef.current * 4);
+      return;
+    }
+    const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft, baseHp, onEnd]);
+
+  useEffect(() => {
+    const spawn = setInterval(() => {
+      const wave = Math.floor((40 - timeLeft) / 8);
+      const hp = 2 + wave;
+      const speed = 0.3 + wave * 0.1;
+      setEnemies(prev => [...prev, { id: enemyIdRef.current++, x: 0, y: 50, hp, speed, pathIndex: 0 }]);
+    }, 2500);
+    return () => clearInterval(spawn);
+  }, [timeLeft]);
+
+  useEffect(() => {
+    const move = setInterval(() => {
+      setEnemies(prev => {
+        const updated = prev.map(e => {
+          const target = PATH[e.pathIndex + 1];
+          if (!target) return e;
+          const dx = target.x - e.x;
+          const dy = target.y - e.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < e.speed) {
+            return { ...e, x: target.x, y: target.y, pathIndex: e.pathIndex + 1 };
+          }
+          return { ...e, x: e.x + (dx / dist) * e.speed, y: e.y + (dy / dist) * e.speed };
+        });
+        const reached = updated.filter(e => e.pathIndex >= PATH.length - 1);
+        if (reached.length > 0) {
+          setBaseHp(h => Math.max(0, h - reached.length));
+          setCombo(0);
+        }
+        return updated.filter(e => e.pathIndex < PATH.length - 1);
+      });
+    }, 50);
+    return () => clearInterval(move);
+  }, []);
+
+  useEffect(() => {
+    const fire = setInterval(() => {
+      if (towersRef.current.length === 0) return;
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      towersRef.current.forEach(tower => {
+        const tx = (tower.x / 100) * rect.width;
+        const ty = (tower.y / 100) * rect.height;
+        const target = enemiesRef.current.find(e => {
+          const ex = (e.x / 100) * rect.width;
+          const ey = (e.y / 100) * rect.height;
+          return Math.sqrt((ex - tx) ** 2 + (ey - ty) ** 2) < tower.range;
+        });
+        if (target) {
+          const sid = shotIdRef.current++;
+          setShots(prev => [...prev, { id: sid, x: tx, y: ty, tx: (target.x / 100) * rect.width, ty: (target.y / 100) * rect.height }]);
+          setEnemies(prev => prev.map(e => e.id === target.id ? { ...e, hp: e.hp - 1 } : e).filter(e => e.hp > 0));
+          setScore(s => s + 5);
+          setCombo(c => c + 1);
+          setTimeout(() => setShots(prev => prev.filter(s => s.id !== sid)), 300);
+        }
+      });
+    }, 600);
+    return () => clearInterval(fire);
+  }, []);
+
+  const handlePlace = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!placing) return;
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setTowers(prev => [...prev, { id: idRef.current++, x, y, range: 80 }]);
+    setPlacing(false);
+  };
+
+  return (
+    <div className="flex-1 flex flex-col items-center px-4">
+      <div className="flex gap-3 mb-3">
+        <StatChip icon={<Shield className="w-3 h-3" />} label="Base" value={`${baseHp} HP`} color="primary" />
+        <StatChip icon={<Timer className="w-3 h-3" />} label="Tiempo" value={`${timeLeft}s`} color="secondary" />
+        <StatChip icon={<Target className="w-3 h-3" />} label="Puntos" value={score} color="muted" />
+      </div>
+      <div className="flex gap-2 mb-2">
+        <motion.button
+          onClick={() => setPlacing(p => !p)}
+          whileTap={{ scale: 0.95 }}
+          className={`px-4 py-2 rounded-lg border-2 font-display text-xs transition-all ${
+            placing
+              ? 'border-primary bg-primary/20 text-primary text-glow'
+              : 'border-primary/40 bg-card/80 text-primary/70 hover:bg-primary/10'
+          }`}
+        >
+          {placing ? '👆 Toca para colocar' : '🛡️ Colocar Torre'}
+        </motion.button>
+      </div>
+      <div
+        ref={containerRef}
+        onClick={handlePlace}
+        className={`relative w-full max-w-sm flex-1 rounded-2xl border-2 bg-gradient-to-b from-card/60 to-card/30 min-h-[400px] overflow-hidden ${
+          placing ? 'border-primary cursor-crosshair' : 'border-blue-500/30'
+        }`}
+      >
+        {/* Path */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <polyline
+            points={PATH.map(p => `${p.x},${p.y}`).join(' ')}
+            fill="none"
+            stroke="rgba(79,168,255,0.3)"
+            strokeWidth="2"
+            strokeDasharray="3,2"
+          />
+        </svg>
+        {/* Base */}
+        <div className="absolute" style={{ left: '95%', top: '46%', transform: 'translate(-50%,-50%)' }}>
+          <div className="w-8 h-8 rounded-lg border-2 border-primary bg-primary/20 flex items-center justify-center text-sm">🏰</div>
+        </div>
+        {/* Spawn */}
+        <div className="absolute" style={{ left: '2%', top: '46%', transform: 'translate(-50%,-50%)' }}>
+          <div className="w-6 h-6 rounded-full border-2 border-red-500/50 bg-red-500/20 flex items-center justify-center text-xs">👾</div>
+        </div>
+        {/* Towers */}
+        {towers.map(t => (
+          <div key={t.id} className="absolute" style={{ left: `${t.x}%`, top: `${t.y}%`, transform: 'translate(-50%,-50%)' }}>
+            <div className="w-6 h-6 rounded-lg border-2 border-blue-400 bg-blue-500/30 flex items-center justify-center text-xs">🛡️</div>
+          </div>
+        ))}
+        {/* Enemies */}
+        {enemies.map(e => (
+          <div key={e.id} className="absolute" style={{ left: `${e.x}%`, top: `${e.y}%`, transform: 'translate(-50%,-50%)' }}>
+            <div className="w-5 h-5 rounded-full border border-red-500/60 bg-red-500/30 flex items-center justify-center text-[10px]">👾</div>
+          </div>
+        ))}
+        {/* Shots */}
+        {shots.map(s => (
+          <motion.div
+            key={s.id}
+            initial={{ left: s.x, top: s.y, opacity: 1 }}
+            animate={{ left: s.tx, top: s.ty, opacity: 0.5 }}
+            transition={{ duration: 0.3 }}
+            className="absolute w-2 h-2 rounded-full bg-blue-400 pointer-events-none"
+            style={{ transform: 'translate(-50%,-50%)' }}
+          />
+        ))}
+        {combo >= 3 && (
+          <div className="absolute top-2 right-2 pointer-events-none">
+            <span className="font-display text-xs text-secondary text-glow-gold flex items-center gap-1">
+              <Flame className="w-3 h-3" /> x{combo}
+            </span>
+          </div>
+        )}
+      </div>
+      <p className="font-body text-[10px] text-muted-foreground mt-2 text-center">
+        Coloca torres junto al camino para defender tu base
+      </p>
+    </div>
+  );
+}
+
+// ===================== TECH PUZZLE =====================
+function TechPuzzleGame({ onEnd }: { onEnd: (gameId: string, score: number) => void }) {
+  const [score, setScore] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(35);
+  const [combo, setCombo] = useState(0);
+  const [grid, setGrid] = useState<{ type: 'source' | 'wire' | 'empty'; rotation: number; powered: boolean }[]>([]);
+  const [ended, setEnded] = useState(false);
+  const GRID_SIZE = 5;
+
+  useEffect(() => {
+    // Initialize grid with random wires
+    const newGrid: { type: 'source' | 'wire' | 'empty'; rotation: number; powered: boolean }[] = [];
+    for (let i = 0; i < GRID_SIZE * GRID_SIZE; i++) {
+      const r = Math.random();
+      newGrid.push({
+        type: r < 0.1 ? 'source' : r < 0.5 ? 'wire' : 'empty',
+        rotation: Math.floor(Math.random() * 4) * 90,
+        powered: false,
+      });
+    }
+    // Ensure at least one source
+    if (!newGrid.some(c => c.type === 'source')) {
+      newGrid[12].type = 'source';
+    }
+    setGrid(newGrid);
+  }, []);
+
+  useEffect(() => {
+    if (ended) return;
+    if (timeLeft <= 0) {
+      setEnded(true);
+      onEnd('tech_puzzle', score + combo * 3);
+      return;
+    }
+    const timer = setTimeout(() => setTimeLeft(t => t - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft, score, combo, ended, onEnd]);
+
+  const rotateCell = (i: number) => {
+    if (grid[i].type === 'empty') return;
+    setGrid(prev => {
+      const updated = [...prev];
+      updated[i] = { ...updated[i], rotation: (updated[i].rotation + 90) % 360 };
+      return updated;
+    });
+    // Check for connections (simple: count powered cells adjacent to sources)
+    setTimeout(() => {
+      setGrid(prev => {
+        const updated = [...prev];
+        updated.forEach((cell, idx) => {
+          updated[idx] = { ...cell, powered: false };
+        });
+        // Find sources and power adjacent wires
+        updated.forEach((cell, idx) => {
+          if (cell.type === 'source') {
+            updated[idx] = { ...cell, powered: true };
+            const row = Math.floor(idx / GRID_SIZE);
+            const col = idx % GRID_SIZE;
+            const neighbors = [
+              { r: row - 1, c: col }, { r: row + 1, c: col },
+              { r: row, c: col - 1 }, { r: row, c: col + 1 },
+            ];
+            neighbors.forEach(({ r, c }) => {
+              if (r >= 0 && r < GRID_SIZE && c >= 0 && c < GRID_SIZE) {
+                const ni = r * GRID_SIZE + c;
+                if (updated[ni].type === 'wire') {
+                  if (!updated[ni].powered) {
+                    updated[ni] = { ...updated[ni], powered: true };
+                    setScore(s => s + 5);
+                    setCombo(c2 => c2 + 1);
+                  }
+                }
+              }
+            });
+          }
+        });
+        return updated;
+      });
+    }, 50);
+  };
+
+  return (
+    <div className="flex-1 flex flex-col items-center px-4">
+      <div className="flex gap-3 mb-3">
+        <StatChip icon={<Plug className="w-3 h-3" />} label="Datos" value={score} color="primary" />
+        <StatChip icon={<Timer className="w-3 h-3" />} label="Tiempo" value={`${timeLeft}s`} color="secondary" />
+        <StatChip icon={<Flame className="w-3 h-3" />} label="Combo" value={`x${combo}`} color="muted" />
+      </div>
+      <div className="relative w-full max-w-sm flex-1 rounded-2xl border-2 border-cyan-500/30 bg-gradient-to-b from-card/60 to-background/40 overflow-hidden min-h-[400px] flex items-center justify-center">
+        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)`, width: '280px' }}>
+          {grid.map((cell, i) => (
+            <motion.button
+              key={i}
+              whileTap={{ scale: 0.9 }}
+              onClick={() => rotateCell(i)}
+              className={`aspect-square rounded-lg border-2 flex items-center justify-center transition-all ${
+                cell.type === 'source'
+                  ? cell.powered
+                    ? 'border-cyan-400 bg-cyan-500/30 shadow-lg shadow-cyan-500/30'
+                    : 'border-cyan-500/40 bg-cyan-500/10'
+                  : cell.type === 'wire'
+                    ? cell.powered
+                      ? 'border-primary bg-primary/20 shadow-lg shadow-primary/20'
+                      : 'border-muted/30 bg-card/40'
+                    : 'border-transparent bg-transparent'
+              }`}
+              style={{ transform: `rotate(${cell.rotation}deg)` }}
+              disabled={cell.type === 'empty'}
+            >
+              {cell.type === 'source' && <span className="text-lg">⚡</span>}
+              {cell.type === 'wire' && (
+                <svg viewBox="0 0 20 20" className="w-5 h-5">
+                  <line x1="10" y1="0" x2="10" y2="20" stroke={cell.powered ? '#5cff2a' : '#666'} strokeWidth="3" />
+                </svg>
+              )}
+            </motion.button>
+          ))}
+        </div>
+      </div>
+      <p className="font-body text-[10px] text-muted-foreground mt-2 text-center">
+        Rota las piezas para conectar los circuitos desde las fuentes ⚡
+      </p>
     </div>
   );
 }

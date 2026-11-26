@@ -373,6 +373,9 @@ const Index = () => {
             onFetchBuildings={fetchBuildings}
             onBuyBuilding={buyBuilding}
             onArenaBattle={arenaBattle}
+            gameResources={isGuest ? null : gameResources}
+            onCollectProduction={collectProduction}
+            onFetchGameResources={fetchGameResources}
           />
         )}
         {currentScreen === 'mine' && (
@@ -440,15 +443,8 @@ const Index = () => {
             onSubmitScore={isGuest ? guestSubmitScore : submitMinigameScore}
             minigameScores={minigameScores}
             onFetchScores={fetchMinigameScores}
-            gameResources={isGuest ? null : gameResources}
             gamesHubData={isGuest ? null : gamesHubData}
-            onFetchGameResources={fetchGameResources}
             onFetchGamesHub={fetchGamesHub}
-            onCollectProduction={collectProduction}
-            buildings={gameBuildings}
-            onBuyBuilding={buyGameBuilding}
-            onFetchBuildings={fetchGameBuildings}
-            energy={gameState.energy}
           />
         )}
       </AnimatePresence>
