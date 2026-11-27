@@ -13,6 +13,7 @@ import { OFFICIAL_LINKS } from '@/lib/ecosystem';
 import { Zap, Trophy, LogOut, Globe } from 'lucide-react';
 import { toast } from 'sonner';
 import { TonConnectLazy } from '@/components/game/TonConnectLazy';
+import { useLanguage } from '@/hooks/useLanguage';
 
 // Lazy-load heavy screens to avoid loading Three.js/TonConnect upfront
 const PlanetScreen = lazy(() => import('@/screens/PlanetScreen').then(m => ({ default: m.PlanetScreen })));
@@ -83,6 +84,7 @@ const MISSIONS = [
 
 const Index = () => {
   const { isReady, isTelegram, openLink, hapticFeedback, webSessionToken, signOutWeb } = useTelegram();
+  const { language, toggleLanguage, t } = useLanguage();
   const [showWebLogin, setShowWebLogin] = useState(false);
   const [guestMode, setGuestMode] = useState(false);
   const guest = useGuestPlay();
@@ -179,13 +181,13 @@ const Index = () => {
 
   const handleNavigate = useCallback((screen: Screen) => {
     if (isGuest && GUEST_LOCKED_SCREENS.includes(screen)) {
-      toast.info('Crea tu cuenta para desbloquear este edificio');
+      toast.info(t('guest.create_account'));
       setShowWebLogin(true);
       return;
     }
     playNavigateSound();
     setCurrentScreen(screen);
-  }, [playNavigateSound, isGuest]);
+  }, [playNavigateSound, isGuest, t]);
 
   const handleEnterMine = useCallback(() => {
     playNavigateSound();
@@ -196,9 +198,9 @@ const Index = () => {
   }, [playNavigateSound, tutorialStep]);
 
   const guestSubmitScore = useCallback(async () => {
-    toast.info('Crea tu cuenta para guardar tu puntuación y ganar energía');
+    toast.info(t('guest.save_score'));
     return null;
-  }, []);
+  }, [t]);
 
   const handleTap = useCallback(async () => {
     const success = isGuest ? await guest.tap() : await tapToroid();
@@ -238,7 +240,7 @@ const Index = () => {
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="font-display text-primary text-glow">Cargando ACE FLOW...</p>
+          <p className="font-display text-primary text-glow">{t('loading.ace')}</p>
         </div>
       </div>
     );
@@ -272,7 +274,7 @@ const Index = () => {
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="font-display text-primary text-glow">Sincronizando Neutrinos...</p>
+          <p className="font-display text-primary text-glow">{t('loading.sync')}</p>
         </div>
       </div>
     );
@@ -287,7 +289,7 @@ const Index = () => {
           className="fixed top-2 right-2 z-[65] flex items-center gap-1 px-2 py-1 rounded-lg bg-card/80 border border-muted/30 text-muted-foreground hover:text-foreground hover:border-muted/60 transition-colors"
         >
           <LogOut className="w-3 h-3" />
-          <span className="font-display text-[10px]">Salir</span>
+          <span className="font-display text-[10px]">{t('logout')}</span>
         </button>
       )}
 
@@ -306,7 +308,7 @@ const Index = () => {
           onClick={() => setShowWebLogin(true)}
           className="fixed top-2 left-1/2 -translate-x-1/2 z-[65] whitespace-nowrap px-3 py-1 rounded-lg bg-card border border-secondary/60 font-display text-[10px] text-secondary hover:bg-secondary/10 transition-colors"
         >
-          Modo prueba · Crear cuenta
+          {t('guest.trial')}
         </button>
       )}
 
@@ -326,10 +328,10 @@ const Index = () => {
               className="bg-card border border-primary/40 rounded-2xl p-6 w-full max-w-sm text-center space-y-4 box-glow"
             >
               <h2 className="font-display text-xl font-bold text-primary text-glow">
-                ¡BIENVENIDO DE VUELTA!
+                {t('offline.welcome')}
               </h2>
               <p className="font-body text-xs text-muted-foreground">
-                Tus minas generaron energía mientras estabas fuera
+                {t('offline.desc')}
               </p>
               <motion.div
                 initial={{ scale: 0 }}
@@ -347,7 +349,7 @@ const Index = () => {
                 whileTap={{ scale: 0.95 }}
                 className="w-full py-3 rounded-xl bg-primary/20 border border-primary/40 font-display text-sm text-primary hover:bg-primary/30 transition-colors"
               >
-                ¡GENIAL!
+                {t('offline.great')}
               </motion.button>
             </motion.div>
           </motion.div>
@@ -407,6 +409,8 @@ const Index = () => {
             onFetchScores={fetchMinigameScores}
             gamesHubData={isGuest ? null : gamesHubData}
             onFetchGamesHub={fetchGamesHub}
+            t={t}
+            language={language}
           />
           </Suspense>
           </TonConnectLazy>
@@ -470,6 +474,9 @@ const Index = () => {
         onNavigate={handleNavigate}
         isMuted={isMuted}
         onToggleMute={toggleMute}
+        language={language}
+        onToggleLanguage={toggleLanguage}
+        t={t}
       />
 
       {/* Tutorial Overlay */}

@@ -340,8 +340,61 @@ export const LandingScreen = ({ onPlayInBrowser, onPlayAsGuest }: { onPlayInBrow
           </motion.button>
         )}
 
+        {/* AlienFlow Ecosystem Links */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 2.5, duration: 0.5 }}
+          className="w-full max-w-sm mt-3"
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex-1 h-px bg-primary/20" />
+            <span
+              className="text-[8px] text-primary/60 tracking-[0.2em] font-semibold"
+              style={{ fontFamily: "'Rajdhani', sans-serif" }}
+            >
+              ALIENFLOW ECOSYSTEM
+            </span>
+            <div className="flex-1 h-px bg-primary/20" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { name: 'AlienFlow DAO', url: OFFICIAL_LINKS.dao, icon: '🌌', desc: 'Main Hub' },
+              { name: 'Aitor', url: OFFICIAL_LINKS.aitor, icon: '🤖', desc: 'AI Assistant' },
+              { name: 'ADEX', url: OFFICIAL_LINKS.adex, icon: '📊', desc: 'Ad Exchange' },
+              { name: 'ATrip', url: OFFICIAL_LINKS.atrip, icon: '🚀', desc: 'Travel DApp' },
+            ].map((link, i) => (
+              <motion.a
+                key={link.name}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 2.6 + i * 0.1, duration: 0.3 }}
+                whileHover={{ scale: 1.05 }}
+                onMouseEnter={playBlip}
+                className="flex items-center gap-2 p-2.5 rounded-xl border border-primary/30 bg-card/80 backdrop-blur-sm hover:bg-primary/10 hover:border-primary/50 transition-all duration-200"
+              >
+                <span className="text-lg">{link.icon}</span>
+                <div className="text-left min-w-0">
+                  <div
+                    className="text-[10px] font-bold text-primary truncate"
+                    style={{ fontFamily: "'Rajdhani', sans-serif" }}
+                  >
+                    {link.name}
+                  </div>
+                  <div className="text-[7px] text-muted-foreground tracking-wider truncate">
+                    {link.desc}
+                  </div>
+                </div>
+              </motion.a>
+            ))}
+          </div>
+        </motion.div>
+
         {/* Social Links Grid */}
-        <div className="grid grid-cols-5 max-[360px]:grid-cols-4 gap-2 mt-2 w-full max-w-sm">
+        <div className="grid grid-cols-5 max-[360px]:grid-cols-4 gap-2 mt-3 w-full max-w-sm">
           {SOCIAL_LINKS.map((social, index) => {
             const IconComponent = social.icon;
             return (
