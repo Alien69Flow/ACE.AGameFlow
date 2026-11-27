@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 
 export const useTelegram = () => {
   const [isReady, setIsReady] = useState(false);
@@ -31,6 +31,11 @@ export const useTelegram = () => {
       setInitData(null);
       setUserId(null);
       setUsername(null);
+
+      if (!isSupabaseConfigured) {
+        setIsReady(true);
+        return;
+      }
 
       supabase.auth.getSession().then(({ data }) => {
         if (data.session?.access_token) {

@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion';
-import { ArrowLeft, Zap, Star, Clock } from 'lucide-react';
+import { ArrowLeft, Zap, Star, Clock, Gamepad2 } from 'lucide-react';
 import { useState } from 'react';
 import { Toroid } from '@/components/game/Toroid';
 import { getTutorialHighlight } from '@/components/game/Tutorial';
 import { TonConnectButton, useTonConnectUI } from '@tonconnect/ui-react';
 import { ENERGY_PACKS, MULTIPLIER_PACKS, DAO_WALLET_ADDRESS, toNano } from '@/lib/payments';
 import { toast } from 'sonner';
+import { MinigamesScreen } from '@/screens/MinigamesScreen';
 
 interface MineScreenProps {
   onTap: () => Promise<boolean>;
@@ -17,14 +18,26 @@ interface MineScreenProps {
   onActivateMultiplier: (txHash: string) => Promise<boolean>;
   onApplyEnergyPack?: (packId: string, txHash: string) => Promise<boolean>;
   isGuest?: boolean;
+  onSubmitScore: (gameId: string, score: number) => Promise<{ success: boolean; reward: number; energy: number; isHighScore: boolean } | null>;
+  minigameScores: { game_id: string; high_score: number; total_plays: number; last_played_at: string }[];
+  onFetchScores: () => Promise<void>;
+  gamesHubData?: {
+    games: {
+      id: string; category: string; label: string; description: string; icon: string;
+      difficulty: string; rewardResource: string; unlocked: boolean;
+      playsToday: number; dailyPlayLimit: number; highScore: number; boostMultiplier: number;
+    }[];
+  } | null;
+  onFetchGamesHub?: () => Promise<void>;
 }
 
-export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, multiplierExpiresAt, onActivateMultiplier, onApplyEnergyPack, isGuest = false }: MineScreenProps) => {
+export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, multiplierExpiresAt, onActivateMultiplier, onApplyEnergyPack, isGuest = false, onSubmitScore, minigameScores, onFetchScores, gamesHubData, onFetchGamesHub }: MineScreenProps) => {
   const highlight = tutorialStep !== null ? getTutorialHighlight(tutorialStep) : null;
   const [tonConnectUI] = useTonConnectUI();
   const [processingPackId, setProcessingPackId] = useState<string | null>(null);
   const [sessionTaps, setSessionTaps] = useState(0);
   const [combo, setCombo] = useState(0);
+  const [showGames, setShowGames] = useState(false);
 
   const isMultiplierActive = multiplier > 1 && multiplierExpiresAt && new Date(multiplierExpiresAt) > new Date();
 
@@ -288,6 +301,27 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
         )}
       </motion.div>
 
+      {/* Arena de Juegos entry button */}
+      <motion.button
+        initial={{ y: 30, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        onClick={() => setShowGames(true)}
+        whileTap={{ scale: 0.97 }}
+        className="w-full max-w-xs mt-6 mb-4 flex items-center justify-between gap-3 p-4 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 to-primary/5 hover:border-primary/50 transition-all"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-card/80">
+            <Gamepad2 className="w-6 h-6 text-primary" />
+          </div>
+          <div className="text-left">
+            <h3 className="font-display text-sm font-bold text-primary text-glow">ARENA DE JUEGOS</h3>
+            <p className="font-body text-[10px] text-muted-foreground">6 minijuegos · Juega y gana energía</p>
+          </div>
+        </div>
+        <span className="font-display text-[10px] text-primary">JUGAR →</span>
+      </motion.button>
+
       {/* Background effects */}
       <div className="absolute inset-0 pointer-events-none -z-10">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_hsl(108_100%_54%_/_0.05)_0%,_transparent_50%)]" />
@@ -301,6 +335,36 @@ export const MineScreen = ({ onTap, onBack, stamina, tutorialStep, multiplier, m
           }} />
         </div>
       </div>
+
+      {/* Minigames overlay */}
+      {showGames && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 bg-background flex flex-col"
+        >
+          <div className="px-4 py-3 flex items-center gap-2 border-b border-primary/20 bg-card/80 backdrop-blur-sm">
+            <button
+              onClick={() => setShowGames(false)}
+              className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="font-display text-xs">Mina</span>
+            </button>
+            <span className="font-display text-xs text-primary text-glow ml-2">⬅ Volver a minar</span>
+          </div>
+          <div className="flex-1 flex flex-col overflow-hidden">
+            <MinigamesScreen
+              onSubmitScore={onSubmitScore}
+              minigameScores={minigameScores}
+              onFetchScores={onFetchScores}
+              gamesHubData={gamesHubData}
+              onFetchGamesHub={onFetchGamesHub}
+            />
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 };

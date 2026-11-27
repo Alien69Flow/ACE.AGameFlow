@@ -20,7 +20,6 @@ const MineScreen = lazy(() => import('@/screens/MineScreen').then(m => ({ defaul
 const NetworkScreen = lazy(() => import('@/screens/NetworkScreen').then(m => ({ default: m.NetworkScreen })));
 const UpgradesScreen = lazy(() => import('@/screens/UpgradesScreen').then(m => ({ default: m.UpgradesScreen })));
 const AirdropScreen = lazy(() => import('@/screens/AirdropScreen').then(m => ({ default: m.AirdropScreen })));
-const MinigamesScreen = lazy(() => import('@/screens/MinigamesScreen').then(m => ({ default: m.MinigamesScreen })));
 
 const ScreenLoader = () => (
   <div className="flex-1 flex items-center justify-center">
@@ -60,7 +59,7 @@ const AchievementToast = ({ achievement, onDismiss }: { achievement: { id: strin
   );
 };
 
-type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop' | 'minigames';
+type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop';
 
 const GUEST_LOCKED_SCREENS: Screen[] = ['network', 'upgrades', 'airdrop'];
 
@@ -403,6 +402,11 @@ const Index = () => {
             onActivateMultiplier={activateMultiplier}
             onApplyEnergyPack={applyEnergyPack}
             isGuest={isGuest}
+            onSubmitScore={isGuest ? guestSubmitScore : submitMinigameScore}
+            minigameScores={minigameScores}
+            onFetchScores={fetchMinigameScores}
+            gamesHubData={isGuest ? null : gamesHubData}
+            onFetchGamesHub={fetchGamesHub}
           />
           </Suspense>
           </TonConnectLazy>
@@ -457,18 +461,6 @@ const Index = () => {
             energy={gameState.energy}
             referralCount={gameState.referralCount}
             dailyStreak={gameState.dailyStreak}
-          />
-          </Suspense>
-        )}
-        {currentScreen === 'minigames' && (
-          <Suspense fallback={<ScreenLoader />}>
-          <MinigamesScreen
-            key="minigames"
-            onSubmitScore={isGuest ? guestSubmitScore : submitMinigameScore}
-            minigameScores={minigameScores}
-            onFetchScores={fetchMinigameScores}
-            gamesHubData={isGuest ? null : gamesHubData}
-            onFetchGamesHub={fetchGamesHub}
           />
           </Suspense>
         )}

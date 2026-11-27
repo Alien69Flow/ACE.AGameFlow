@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion';
-import { Zap, Pickaxe, Users, ArrowUpCircle, Rocket, Volume2, VolumeX, Gamepad2 } from 'lucide-react';
+import { Zap, Pickaxe, Users, ArrowUpCircle, Rocket, Volume2, VolumeX } from 'lucide-react';
 
-type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop' | 'minigames';
+type Screen = 'planet' | 'mine' | 'network' | 'upgrades' | 'airdrop';
 
 interface NavigationProps {
   currentScreen: Screen;
@@ -16,7 +16,6 @@ const navItems: { id: Screen; icon: typeof Zap; label: string }[] = [
   { id: 'upgrades', icon: ArrowUpCircle, label: 'Mejoras' },
   { id: 'network', icon: Users, label: 'Red' },
   { id: 'airdrop', icon: Rocket, label: 'Airdrop' },
-  { id: 'minigames', icon: Gamepad2, label: 'Juegos' },
 ];
 
 export const Navigation = ({ currentScreen, onNavigate, isMuted, onToggleMute }: NavigationProps) => {
