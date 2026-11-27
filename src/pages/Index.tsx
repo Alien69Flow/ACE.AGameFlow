@@ -12,7 +12,7 @@ import { WebLoginScreen } from '@/components/game/WebLoginScreen';
 import { OFFICIAL_LINKS } from '@/lib/ecosystem';
 import { Zap, Trophy, LogOut, Globe } from 'lucide-react';
 import { toast } from 'sonner';
-import { TonConnectLazy } from '@/App';
+import { TonConnectLazy } from '@/components/game/TonConnectLazy';
 
 // Lazy-load heavy screens to avoid loading Three.js/TonConnect upfront
 const PlanetScreen = lazy(() => import('@/screens/PlanetScreen').then(m => ({ default: m.PlanetScreen })));
@@ -24,7 +24,7 @@ const MinigamesScreen = lazy(() => import('@/screens/MinigamesScreen').then(m =>
 
 const ScreenLoader = () => (
   <div className="flex-1 flex items-center justify-center">
-    <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+    <div className="w-8 h-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin" />
   </div>
 );
 
@@ -390,6 +390,7 @@ const Index = () => {
           </Suspense>
         )}
         {currentScreen === 'mine' && (
+          <TonConnectLazy>
           <Suspense fallback={<ScreenLoader />}>
           <MineScreen
             key="mine"
@@ -404,6 +405,7 @@ const Index = () => {
             isGuest={isGuest}
           />
           </Suspense>
+          </TonConnectLazy>
         )}
         {currentScreen === 'upgrades' && (
           <Suspense fallback={<ScreenLoader />}>
@@ -416,6 +418,7 @@ const Index = () => {
           </Suspense>
         )}
         {currentScreen === 'network' && (
+          <TonConnectLazy>
           <Suspense fallback={<ScreenLoader />}>
           <NetworkScreen
             key="network"
@@ -445,6 +448,7 @@ const Index = () => {
             onClaimAchievement={claimAchievement}
           />
           </Suspense>
+          </TonConnectLazy>
         )}
         {currentScreen === 'airdrop' && (
           <Suspense fallback={<ScreenLoader />}>
