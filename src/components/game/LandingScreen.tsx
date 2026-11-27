@@ -191,6 +191,19 @@ export const LandingScreen = ({ onPlayInBrowser, onPlayAsGuest }: { onPlayInBrow
 
       {/* Content */}
       <div className="relative z-10 flex flex-col items-center gap-4 px-4 max-w-md w-full">
+        {/* Immediate loading indicator so screen is never fully black */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-20"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="font-display text-[10px] text-primary/60 tracking-widest">INITIALIZING</span>
+          </div>
+        </motion.div>
+
         {/* Logo */}
         <motion.div
           initial={{ scale: 0, opacity: 0 }}
@@ -305,7 +318,7 @@ export const LandingScreen = ({ onPlayInBrowser, onPlayAsGuest }: { onPlayInBrow
           <motion.button
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 2.5, duration: 0.6, type: 'spring', stiffness: 120 }}
+            transition={{ delay: 0.8, duration: 0.5 }}
             onClick={onPlayAsGuest}
             onMouseEnter={playWhoosh}
             className="relative group w-full max-w-xs"
