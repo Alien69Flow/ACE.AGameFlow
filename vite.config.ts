@@ -18,4 +18,20 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'three-core': ['three'],
+          'three-fiber': ['@react-three/fiber', '@react-three/drei'],
+          'framer-motion': ['framer-motion'],
+          'supabase': ['@supabase/supabase-js'],
+          'tonconnect': ['@tonconnect/ui-react', '@tonconnect/sdk'],
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'tanstack': ['@tanstack/react-query'],
+        },
+      },
+    },
+  },
 }));

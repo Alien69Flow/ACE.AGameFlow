@@ -30,6 +30,93 @@
       html, body {
         overscroll-behavior: none;
         touch-action: pan-x pan-y;
+        margin: 0;
+        padding: 0;
+        background: #000000;
+        color: #39FF14;
+        font-family: 'Orbitron', 'Rajdhani', system-ui, sans-serif;
+      }
+      #root {
+        min-height: 100vh;
+      }
+      /* Loading screen shown until React hydrates */
+      #app-loading {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #000;
+        z-index: 9999;
+        transition: opacity 0.3s;
+      }
+      #app-loading .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid #1a3a1a;
+        border-top-color: #39FF14;
+        border-radius: 50%;
+        animation: app-spin 0.8s linear infinite;
+      }
+      #app-loading .title {
+        margin-top: 20px;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: 0.15em;
+        color: #39FF14;
+        text-shadow: 0 0 12px rgba(57,255,20,0.6);
+        font-family: 'Orbitron', sans-serif;
+      }
+      #app-loading .subtitle {
+        margin-top: 8px;
+        font-size: 11px;
+        letter-spacing: 0.2em;
+        color: rgba(120,180,120,0.6);
+        text-transform: uppercase;
+        font-family: 'Rajdhani', sans-serif;
+      }
+      @keyframes app-spin {
+        to { transform: rotate(360deg); }
+      }
+      /* Error fallback */
+      #app-error {
+        display: none;
+        position: fixed;
+        inset: 0;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        background: #000;
+        z-index: 10000;
+        padding: 24px;
+        text-align: center;
+      }
+      #app-error.visible { display: flex; }
+      #app-error h2 {
+        color: #39FF14;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 18px;
+        margin-bottom: 12px;
+      }
+      #app-error p {
+        color: rgba(120,180,120,0.7);
+        font-family: 'Rajdhani', sans-serif;
+        font-size: 13px;
+        line-height: 1.5;
+        max-width: 300px;
+      }
+      #app-error button {
+        margin-top: 20px;
+        padding: 12px 32px;
+        border: 2px solid rgba(57,255,20,0.5);
+        border-radius: 12px;
+        background: rgba(57,255,20,0.1);
+        color: #39FF14;
+        font-family: 'Orbitron', sans-serif;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
       }
     </style>
     
@@ -44,7 +131,35 @@
 </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="app-loading">
+        <div class="spinner"></div>
+        <div class="title">ACE FLOW</div>
+        <div class="subtitle">Cargando...</div>
+      </div>
+      <div id="app-error">
+        <h2>NO SE PUDO CARGAR</h2>
+        <p>Tu conexión puede ser lenta o el navegador no soporta algunos gráficos. Revisa tu conexión e inténtalo de nuevo.</p>
+        <button onclick="window.location.reload()">REINTENTAR</button>
+      </div>
+    </div>
+    <script>
+      // Show error if JS fails to load within 15 seconds
+      window.addEventListener('error', function(e) {
+        if (e.target && e.target.tagName === 'SCRIPT') {
+          document.getElementById('app-loading').style.display = 'none';
+          document.getElementById('app-error').classList.add('visible');
+        }
+      }, true);
+      setTimeout(function() {
+        var loading = document.getElementById('app-loading');
+        if (loading && loading.style.display !== 'none') {
+          // Still loading after 15s — keep spinner but show a hint
+          var hint = loading.querySelector('.subtitle');
+          if (hint) hint.textContent = 'Sigue cargando... espera';
+        }
+      }, 15000);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

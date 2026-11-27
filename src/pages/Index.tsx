@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useGameState } from '@/hooks/useGameState';
@@ -9,15 +9,24 @@ import { Navigation } from '@/components/game/Navigation';
 import { Tutorial } from '@/components/game/Tutorial';
 import { LandingScreen } from '@/components/game/LandingScreen';
 import { WebLoginScreen } from '@/components/game/WebLoginScreen';
-import { PlanetScreen } from '@/screens/PlanetScreen';
 import { OFFICIAL_LINKS } from '@/lib/ecosystem';
-import { MineScreen } from '@/screens/MineScreen';
-import { NetworkScreen } from '@/screens/NetworkScreen';
-import { UpgradesScreen } from '@/screens/UpgradesScreen';
-import { AirdropScreen } from '@/screens/AirdropScreen';
-import { MinigamesScreen } from '@/screens/MinigamesScreen';
 import { Zap, Trophy, LogOut, Globe } from 'lucide-react';
 import { toast } from 'sonner';
+import { TonConnectLazy } from '@/App';
+
+// Lazy-load heavy screens to avoid loading Three.js/TonConnect upfront
+const PlanetScreen = lazy(() => import('@/screens/PlanetScreen').then(m => ({ default: m.PlanetScreen })));
+const MineScreen = lazy(() => import('@/screens/MineScreen').then(m => ({ default: m.MineScreen })));
+const NetworkScreen = lazy(() => import('@/screens/NetworkScreen').then(m => ({ default: m.NetworkScreen })));
+const UpgradesScreen = lazy(() => import('@/screens/UpgradesScreen').then(m => ({ default: m.UpgradesScreen })));
+const AirdropScreen = lazy(() => import('@/screens/AirdropScreen').then(m => ({ default: m.AirdropScreen })));
+const MinigamesScreen = lazy(() => import('@/screens/MinigamesScreen').then(m => ({ default: m.MinigamesScreen })));
+
+const ScreenLoader = () => (
+  <div className="flex-1 flex items-center justify-center">
+    <div className="w-8 h-8 border-3 border-primary border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 // Auto-dismiss achievement toast component
 const AchievementToast = ({ achievement, onDismiss }: { achievement: { id: string; name: string; icon: string; reward: number }; onDismiss: () => void }) => {
@@ -360,6 +369,7 @@ const Index = () => {
       {/* Main Content */}
       <AnimatePresence mode="wait">
         {currentScreen === 'planet' && (
+          <Suspense fallback={<ScreenLoader />}>
           <PlanetScreen 
             key="planet"
             onEnterMine={handleEnterMine} 
@@ -377,8 +387,10 @@ const Index = () => {
             onCollectProduction={collectProduction}
             onFetchGameResources={fetchGameResources}
           />
+          </Suspense>
         )}
         {currentScreen === 'mine' && (
+          <Suspense fallback={<ScreenLoader />}>
           <MineScreen
             key="mine"
             onTap={handleTap}
@@ -391,16 +403,20 @@ const Index = () => {
             onApplyEnergyPack={applyEnergyPack}
             isGuest={isGuest}
           />
+          </Suspense>
         )}
         {currentScreen === 'upgrades' && (
+          <Suspense fallback={<ScreenLoader />}>
           <UpgradesScreen
             key="upgrades"
             energy={gameState.energy}
             onFetchUpgrades={fetchUpgrades}
             onBuyUpgrade={buyUpgrade}
           />
+          </Suspense>
         )}
         {currentScreen === 'network' && (
+          <Suspense fallback={<ScreenLoader />}>
           <NetworkScreen
             key="network"
             missions={missions}
@@ -428,16 +444,20 @@ const Index = () => {
             onFetchAchievements={fetchAchievements}
             onClaimAchievement={claimAchievement}
           />
+          </Suspense>
         )}
         {currentScreen === 'airdrop' && (
+          <Suspense fallback={<ScreenLoader />}>
           <AirdropScreen
             key="airdrop"
             energy={gameState.energy}
             referralCount={gameState.referralCount}
             dailyStreak={gameState.dailyStreak}
           />
+          </Suspense>
         )}
         {currentScreen === 'minigames' && (
+          <Suspense fallback={<ScreenLoader />}>
           <MinigamesScreen
             key="minigames"
             onSubmitScore={isGuest ? guestSubmitScore : submitMinigameScore}
@@ -446,6 +466,7 @@ const Index = () => {
             gamesHubData={isGuest ? null : gamesHubData}
             onFetchGamesHub={fetchGamesHub}
           />
+          </Suspense>
         )}
       </AnimatePresence>
       <Navigation
