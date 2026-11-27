@@ -166,7 +166,13 @@ export const useGameState = () => {
 
   // Init profile
   useEffect(() => {
-    if (!isReady || (!initData && !webSessionToken)) return;
+    if (!isReady || (!initData && !webSessionToken)) {
+      // No auth available — stop loading so guest/landing screens show
+      if (isReady && !initData && !webSessionToken) {
+        setIsLoading(false);
+      }
+      return;
+    }
 
     const initProfile = async () => {
       try {

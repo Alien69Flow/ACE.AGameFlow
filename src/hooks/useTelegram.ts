@@ -10,15 +10,16 @@ export const useTelegram = () => {
   const [webSessionToken, setWebSessionToken] = useState<string | null>(null);
 
   useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     const tg = window.Telegram?.WebApp;
     const hasTelegramContext = !!(tg?.initData && tg.initData.length > 0);
-    
+
     if (hasTelegramContext) {
       tg.ready();
       tg.expand();
       setIsTelegram(true);
       setInitData(tg.initData);
-      
+
       const user = tg.initDataUnsafe?.user;
       if (user) {
         setUserId(user.id.toString());
@@ -31,7 +32,6 @@ export const useTelegram = () => {
       setUserId(null);
       setUsername(null);
 
-      // Check for Supabase web session
       supabase.auth.getSession().then(({ data }) => {
         if (data.session?.access_token) {
           setWebSessionToken(data.session.access_token);
@@ -42,9 +42,10 @@ export const useTelegram = () => {
           }
         }
         setIsReady(true);
+      }).catch(() => {
+        setIsReady(true);
       });
 
-      // Listen for auth state changes
       const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
         if (session?.access_token) {
           setWebSessionToken(session.access_token);
@@ -60,7 +61,13 @@ export const useTelegram = () => {
         }
       });
 
+      // Safety timeout: force ready after 5s no matter what
+      timeoutId = setTimeout(() => {
+        setIsReady(true);
+      }, 5000);
+
       return () => {
+        if (timeoutId) clearTimeout(timeoutId);
         listener.subscription.unsubscribe();
       };
     }
